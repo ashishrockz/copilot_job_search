@@ -36,7 +36,7 @@ import { login } from "@/lib/auth.service";
 
 // Zod validation schema
 const schema = zod.object({
-  username: zod
+  email: zod
     .string()
     .min(1, { message: "Email is required" })
     .email({ message: "Enter a valid email address" }),
@@ -50,7 +50,7 @@ const schema = zod.object({
 });
 export type Values = zod.infer<typeof schema>;
 
-const defaultValues = { username: "", password: "" } satisfies Values;
+const defaultValues = { email: "", password: "" } satisfies Values;
 
 export function Page(): React.JSX.Element {
   const navigate = useNavigate();
@@ -72,7 +72,7 @@ export function Page(): React.JSX.Element {
     resolver: zodResolver(schema),
   });
 
-  const username = watch("username");
+  const email = watch("email");
   const password = watch("password");
 
   const handleGoogleSignIn = () => {
@@ -218,10 +218,10 @@ export function Page(): React.JSX.Element {
                 >
                   {/* Email Field */}
                   <Controller
-                    name="username"
+                    name="email"
                     control={control}
                     render={({ field }) => (
-                      <FormControl error={Boolean(errors.username)} fullWidth>
+                      <FormControl error={Boolean(errors.email)} fullWidth>
                         <InputLabel className="font-medium">
                           Email ID
                         </InputLabel>
@@ -246,9 +246,9 @@ export function Page(): React.JSX.Element {
                             },
                           }}
                         />
-                        {errors.username && (
+                        {errors.email && (
                           <FormHelperText className="ml-1 text-sm">
-                            {errors.username.message}
+                            {errors.email.message}
                           </FormHelperText>
                         )}
                       </FormControl>
@@ -338,7 +338,7 @@ export function Page(): React.JSX.Element {
                     type="submit"
                     variant="contained"
                     fullWidth
-                    disabled={isPending || !username || !password || !isValid}
+                    disabled={isPending || !email || !password || !isValid}
                     className="py-4 text-base font-semibold normal-case rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5"
                     sx={{
                       background:
