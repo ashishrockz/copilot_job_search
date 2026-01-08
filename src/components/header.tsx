@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   AppBar,
   Toolbar,
@@ -51,8 +51,10 @@ export default function Header() {
   const [langAnchorEl, setLangAnchorEl] = useState<HTMLElement | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentLang, setCurrentLang] = useState("EN");
-  const { isAuthenticated } = useAuth(); // Toggle for demo
-  const [currentPath, setCurrentPath] = useState("/copilot");
+  const { isAuthenticated } = useAuth();
+
+  // Use location.pathname instead of separate state
+  const currentPath = location.pathname;
 
   // Languages available
   const languages = [
