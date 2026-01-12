@@ -39,8 +39,6 @@ import {
 } from "@phosphor-icons/react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { clear } from "console";
-import { clearTokens } from "@/lib/local-storage";
 
 export default function Header() {
   const navigate = useNavigate();
@@ -51,7 +49,7 @@ export default function Header() {
   const [langAnchorEl, setLangAnchorEl] = useState<HTMLElement | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentLang, setCurrentLang] = useState("EN");
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
 
   // Use location.pathname instead of separate state
   const currentPath = location.pathname;
@@ -90,8 +88,7 @@ export default function Header() {
   const handleSignOut = () => {
     handleMenuClose();
     setMobileMenuOpen(false);
-    navigate("/auth/signin");
-    clearTokens();
+    logout();
   };
 
   const toggleMobileMenu = () => {
@@ -101,8 +98,10 @@ export default function Header() {
   // Navigation items
   const navItems = [
     { label: "Copilots", path: "/copilot", icon: <Briefcase size={20} /> },
-    { label: "Companies", path: "/companies", icon: <Buildings size={20} /> },
-    { label: "Services", path: "/services", icon: <Gear size={20} /> },
+    { label: "Applications", path: "/applications", icon: <ListIcon size={20} /> },
+    { label: "Tools", path: "/tools", icon: <Gear size={20} /> },
+    { label: "Career", path: "/career", icon: <Buildings size={20} /> },
+    { label: "Support", path: "/support", icon: <ArticleIcon size={20} /> },
   ];
 
   // Desktop Navigation (Authenticated)
@@ -159,36 +158,77 @@ export default function Header() {
       <Button
         onClick={handleLangMenuOpen}
         endIcon={<CaretDown size={16} />}
-        className="normal-case px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 min-w-[80px]"
-        sx={{ textTransform: "none" }}
+        sx={{
+          textTransform: "none",
+          px: 2,
+          py: 1,
+          borderRadius: 2.5,
+          color: "#374151",
+          fontWeight: 600,
+          minWidth: 85,
+          transition: "all 0.2s ease",
+          "&:hover": {
+            bgcolor: "rgba(59, 130, 246, 0.08)",
+            transform: "translateY(-2px)",
+          },
+        }}
       >
         <Translate size={20} className="mr-1" />
         {currentLang}
       </Button>
 
       {/* Notifications */}
-      <IconButton className="hover:bg-gray-100">
-        <Badge badgeContent={3} color="error">
-          <Bell size={24} className="text-gray-700" />
+      <IconButton
+        sx={{
+          transition: "all 0.2s ease",
+          "&:hover": {
+            bgcolor: "rgba(59, 130, 246, 0.08)",
+            transform: "scale(1.05)",
+          },
+        }}
+      >
+        <Badge
+          badgeContent={3}
+          sx={{
+            "& .MuiBadge-badge": {
+              bgcolor: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+              color: "white",
+              fontWeight: 700,
+              animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+              "@keyframes pulse": {
+                "0%, 100%": { opacity: 1 },
+                "50%": { opacity: 0.7 },
+              },
+            },
+          }}
+        >
+          <Bell size={24} className="text-gray-700" weight="duotone" />
         </Badge>
       </IconButton>
 
       {/* User Menu */}
       <div className="ml-2">
-        <IconButton onClick={handleMenuOpen} className="p-0">
+        <IconButton
+          onClick={handleMenuOpen}
+          className="p-0 transition-transform hover:scale-105"
+        >
           <div className="relative">
             <Avatar
               sx={{
-                width: 40,
-                height: 40,
+                width: 44,
+                height: 44,
                 background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                border: "2px solid white",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                border: "3px solid white",
+                boxShadow: "0 4px 12px rgba(102, 126, 234, 0.4), 0 0 0 0 rgba(102, 126, 234, 0.4)",
+                transition: "all 0.3s ease",
+                "&:hover": {
+                  boxShadow: "0 6px 16px rgba(102, 126, 234, 0.6), 0 0 0 4px rgba(102, 126, 234, 0.1)",
+                },
               }}
             >
-              <User size={22} weight="bold" />
+              <User size={24} weight="bold" />
             </Avatar>
-            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
           </div>
         </IconButton>
       </div>
@@ -202,21 +242,38 @@ export default function Header() {
         sx={{
           mt: 1.5,
           "& .MuiPaper-root": {
-            borderRadius: 2,
-            minWidth: 200,
-            boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+            borderRadius: 3,
+            minWidth: 240,
+            boxShadow: "0 8px 30px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08)",
+            border: "1px solid rgba(0,0,0,0.05)",
+            overflow: "visible",
+            "&::before": {
+              content: '""',
+              display: "block",
+              position: "absolute",
+              top: 0,
+              right: 14,
+              width: 10,
+              height: 10,
+              bgcolor: "background.paper",
+              transform: "translateY(-50%) rotate(45deg)",
+              zIndex: 0,
+              borderTop: "1px solid rgba(0,0,0,0.05)",
+              borderLeft: "1px solid rgba(0,0,0,0.05)",
+            },
           },
         }}
       >
-        <div className="px-4 py-3 border-b">
+        <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-purple-50 border-b border-gray-200">
           <Typography
             variant="subtitle2"
-            className="font-semibold text-gray-900"
+            className="font-bold text-gray-900"
+            sx={{ fontSize: "0.95rem" }}
           >
-            John Doe
+            {user?.first_name} {user?.last_name}
           </Typography>
-          <Typography variant="caption" className="text-gray-500">
-            john.doe@email.com
+          <Typography variant="caption" className="text-gray-600 font-medium">
+            {user?.email}
           </Typography>
         </div>
         <MenuItem
@@ -224,45 +281,113 @@ export default function Header() {
             handleMenuClose();
             navigate("/profile");
           }}
-          className="py-2.5"
+          sx={{
+            py: 1.5,
+            mx: 1,
+            my: 0.5,
+            borderRadius: 2,
+            transition: "all 0.2s ease",
+            "&:hover": {
+              bgcolor: "rgba(59, 130, 246, 0.08)",
+              transform: "translateX(4px)",
+            },
+          }}
         >
           <ListItemIcon>
             <User size={20} />
           </ListItemIcon>
-          <ListItemText>My Profile</ListItemText>
+          <ListItemText primaryTypographyProps={{ fontWeight: 500 }}>
+            My Profile
+          </ListItemText>
         </MenuItem>
         <MenuItem
           onClick={() => {
             handleMenuClose();
             navigate("/applications");
           }}
-          className="py-2.5"
+          sx={{
+            py: 1.5,
+            mx: 1,
+            my: 0.5,
+            borderRadius: 2,
+            transition: "all 0.2s ease",
+            "&:hover": {
+              bgcolor: "rgba(59, 130, 246, 0.08)",
+              transform: "translateX(4px)",
+            },
+          }}
         >
           <ListItemIcon>
             <ListIcon size={20} />
           </ListItemIcon>
-          <ListItemText>Applications</ListItemText>
-          <Chip label="5" size="small" color="primary" />
+          <ListItemText primaryTypographyProps={{ fontWeight: 500 }}>
+            Applications
+          </ListItemText>
+          <Chip
+            label="5"
+            size="small"
+            sx={{
+              bgcolor: "rgba(59, 130, 246, 0.15)",
+              color: "#2563EB",
+              fontWeight: 700,
+            }}
+          />
         </MenuItem>
         <MenuItem
           onClick={() => {
             handleMenuClose();
             navigate("/saved");
           }}
-          className="py-2.5"
+          sx={{
+            py: 1.5,
+            mx: 1,
+            my: 0.5,
+            borderRadius: 2,
+            transition: "all 0.2s ease",
+            "&:hover": {
+              bgcolor: "rgba(59, 130, 246, 0.08)",
+              transform: "translateX(4px)",
+            },
+          }}
         >
           <ListItemIcon>
             <BookmarkSimple size={20} />
           </ListItemIcon>
-          <ListItemText>Saved Jobs</ListItemText>
-          <Chip label="12" size="small" />
+          <ListItemText primaryTypographyProps={{ fontWeight: 500 }}>
+            Saved Jobs
+          </ListItemText>
+          <Chip
+            label="12"
+            size="small"
+            sx={{
+              bgcolor: "rgba(139, 92, 246, 0.15)",
+              color: "#8B5CF6",
+              fontWeight: 700,
+            }}
+          />
         </MenuItem>
-        <Divider />
-        <MenuItem onClick={handleSignOut} className="py-2.5 text-red-600">
+        <Divider sx={{ my: 1 }} />
+        <MenuItem
+          onClick={handleSignOut}
+          sx={{
+            py: 1.5,
+            mx: 1,
+            my: 0.5,
+            borderRadius: 2,
+            color: "#DC2626",
+            transition: "all 0.2s ease",
+            "&:hover": {
+              bgcolor: "rgba(220, 38, 38, 0.08)",
+              transform: "translateX(4px)",
+            },
+          }}
+        >
           <ListItemIcon>
             <SignOut size={20} className="text-red-600" />
           </ListItemIcon>
-          <ListItemText>Sign Out</ListItemText>
+          <ListItemText primaryTypographyProps={{ fontWeight: 600 }}>
+            Sign Out
+          </ListItemText>
         </MenuItem>
       </Menu>
 
@@ -273,12 +398,16 @@ export default function Header() {
         onClose={handleLangMenuClose}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
-        sx={{
-          mt: 1,
-          "& .MuiPaper-root": {
-            borderRadius: 2,
-            minWidth: 180,
-          },
+        slotProps={{
+          paper: {
+            sx: {
+              mt: 1,
+              borderRadius: 2,
+              minWidth: 180,
+              boxShadow: "0 8px 30px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08)",
+              border: "1px solid rgba(0,0,0,0.05)",
+            }
+          }
         }}
       >
         {languages.map((lang) => (
@@ -286,7 +415,16 @@ export default function Header() {
             key={lang.code}
             onClick={() => handleLanguageChange(lang.code)}
             selected={currentLang === lang.code}
-            className="py-2"
+            sx={{
+              py: 1.5,
+              px: 2,
+              "&.Mui-selected": {
+                bgcolor: "rgba(59, 130, 246, 0.08)",
+              },
+              "&:hover": {
+                bgcolor: "rgba(59, 130, 246, 0.08)",
+              },
+            }}
           >
             <span className="mr-2 text-xl">{lang.flag}</span>
             <span className="flex-grow">{lang.name}</span>
@@ -325,7 +463,7 @@ export default function Header() {
           </Avatar>
           <div>
             <Typography variant="subtitle1" className="font-semibold">
-              John Doe
+              {user?.first_name} {user?.last_name}
             </Typography>
             <Typography variant="caption">View Profile</Typography>
           </div>
@@ -481,12 +619,16 @@ export default function Header() {
         onClose={handleLangMenuClose}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
-        sx={{
-          mt: 1,
-          "& .MuiPaper-root": {
-            borderRadius: 2,
-            minWidth: 180,
-          },
+        slotProps={{
+          paper: {
+            sx: {
+              mt: 1,
+              borderRadius: 2,
+              minWidth: 180,
+              boxShadow: "0 8px 30px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08)",
+              border: "1px solid rgba(0,0,0,0.05)",
+            }
+          }
         }}
       >
         {languages.map((lang) => (
@@ -494,7 +636,16 @@ export default function Header() {
             key={lang.code}
             onClick={() => handleLanguageChange(lang.code)}
             selected={currentLang === lang.code}
-            className="py-2"
+            sx={{
+              py: 1.5,
+              px: 2,
+              "&.Mui-selected": {
+                bgcolor: "rgba(59, 130, 246, 0.08)",
+              },
+              "&:hover": {
+                bgcolor: "rgba(59, 130, 246, 0.08)",
+              },
+            }}
           >
             <span className="mr-2 text-xl">{lang.flag}</span>
             <span className="flex-grow">{lang.name}</span>
@@ -514,23 +665,40 @@ export default function Header() {
         elevation={0}
         sx={{
           bgcolor: "white",
-          borderBottom: "1px solid #e5e7eb",
+          borderBottom: "2px solid transparent",
+          borderImage: "linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899) 1",
+          backdropFilter: "blur(10px)",
+          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)",
         }}
       >
-        <Toolbar className="py-2">
+        <Toolbar className="py-3">
           <div
             onClick={() => isAuthenticated ? navigate("/copilot") : navigate("/auth/signin")}
             className="flex-grow flex items-center gap-2 cursor-pointer group"
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/30 group-hover:scale-105 transition-transform">
-              J
+            <div className="relative w-11 h-11 rounded-xl bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 flex items-center justify-center text-white font-bold text-xl shadow-xl shadow-blue-500/40 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
+              <span className="relative z-10">J</span>
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-blue-400 to-purple-400 opacity-0 group-hover:opacity-50 blur-sm transition-opacity duration-300"></div>
             </div>
-            <Typography
-              variant="h6"
-              className="font-bold text-gray-800 hidden sm:block"
-            >
-              Job Scout
-            </Typography>
+            <div className="hidden sm:block">
+              <Typography
+                variant="h6"
+                className="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500"
+                sx={{
+                  fontSize: "1.3rem",
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                Job Scout
+              </Typography>
+              <Typography
+                variant="caption"
+                className="text-gray-500 font-medium -mt-1 block"
+                sx={{ fontSize: "0.7rem" }}
+              >
+                Your AI Career Partner
+              </Typography>
+            </div>
           </div>
 
           {isAuthenticated ? (
@@ -539,8 +707,15 @@ export default function Header() {
                 <IconButton
                   onClick={toggleMobileMenu}
                   className="hover:bg-gray-100"
+                  sx={{
+                    transition: "all 0.2s ease",
+                    "&:hover": {
+                      transform: "scale(1.05)",
+                      bgcolor: "rgba(59, 130, 246, 0.1)",
+                    },
+                  }}
                 >
-                  <ListIcon size={24} className="text-gray-700" />
+                  <ListIcon size={26} className="text-gray-700" />
                 </IconButton>
               ) : (
                 <DesktopAuthNav />

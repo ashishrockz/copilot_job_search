@@ -4,6 +4,9 @@ import {
   clearTokens,
   getAccessToken,
   setAccessToken,
+  setRefreshToken,
+  getUser,
+  setUser as setUserStorage,
 } from "@/lib/local-storage";
 import { axiosInstances } from "@/lib/networkInstance";
 
@@ -21,16 +24,26 @@ export interface User {
   plan_type: "free" | "pro" | "enterprise";
 
   is_active: boolean;
+  resume_id?:string | null;
+  created_at?: string;
+  updated_at?: string;
+}
 
-  created_at: string;
-  updated_at: string;
+interface LoginResponse {
+  success: boolean;
+  data?: {
+    access_token: string;
+    refresh_token: string;
+    user: User;
+  };
+  message?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<LoginResponse>;
   logout: () => void;
 }
 
@@ -42,54 +55,67 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
-  const [access_token, set_access_token] = useState<string | null>(null);
-
-  const isAuthenticated = !!user && !!getAccessToken();
 
   useEffect(() => {
-  const token = getAccessToken();
+    const token = getAccessToken();
+    const storedUser = getUser();
 
-  if (token) {
-    set_access_token(token);
+    if (token && storedUser) {
+      setUser(storedUser);
+      setIsAuthenticated(true);
+      setLoading(false);
+    } else {
+      clearTokens();
+      setUser(null);
+      setIsAuthenticated(false);
+      setLoading(false);
+    }
+  }, []); // ✅ runs only once on app start
 
-    const init = async () => {
-      try {
-        const { data } = await axiosInstances.get("/auth/me");
-        setUser(data);
-      } catch (error) {
-        clearTokens();
-      } finally {
-        setLoading(false);
+
+
+  const login = async (email: string, password: string): Promise<LoginResponse> => {
+    try {
+      const response = await axiosInstances.post("/auth/login", {
+        email,
+        password,
+      });
+
+      // Store tokens and user data
+      if (response.data.access_token) {
+        setAccessToken(response.data.access_token);
       }
-    };
+      if (response.data.refresh_token) {
+        setRefreshToken(response.data.refresh_token);
+      }
+      if (response.data.user) {
+        setUser(response.data.user);
+        setUserStorage(response.data.user);
+        setIsAuthenticated(true);
+      }
 
-    init();
-  } else {
-    clearTokens();
-    setLoading(false);
-  }
-}, []); // ✅ runs only once on app start
-
-
-  const login = async (email: string, password: string) => {
-    const form = new URLSearchParams();
-    form.append("username", email);
-    form.append("password", password);
-
-    const { data } = await axiosInstances.post("/auth/login", form, {
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    });
-
-    setAccessToken(data.access_token);
-    setUser(data.user);
-    navigate("/copilot", { replace: true });
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message:
+          error?.response?.data?.detail ||
+          error?.response?.data?.message ||
+          error?.message ||
+          "Something went wrong",
+      };
+    }
   };
-
   const logout = async () => {
     clearTokens();
     setUser(null);
-    navigate("/auth/login", { replace: true });
+    setIsAuthenticated(false);
+    navigate("/auth/signin", { replace: true });
   };
 
   return (

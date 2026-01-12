@@ -31,8 +31,7 @@ import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z as zod } from "zod";
-import { setAccessToken, setRefreshToken } from "@/lib/local-storage";
-import { login } from "@/lib/auth.service";
+import { useAuth } from "@/context/AuthContext";
 
 // Zod validation schema
 const schema = zod.object({
@@ -56,9 +55,16 @@ export function Page(): React.JSX.Element {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-
+  const {login, isAuthenticated, loading} = useAuth()
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isPending, setIsPending] = useState<boolean>(false);
+
+  // Redirect to copilot if already authenticated
+  React.useEffect(() => {
+    if (!loading && isAuthenticated) {
+      navigate("/copilot", { replace: true });
+    }
+  }, [loading, isAuthenticated, navigate]);
 
   const {
     control,
@@ -83,10 +89,9 @@ export function Page(): React.JSX.Element {
       setIsPending(true);
 
       try {
-        const response = await login(values);
+        const response = await login(values.email, values.password);
         console.log("response", response);
-        setAccessToken(response?.data?.access_token);
-        setRefreshToken(response?.data?.refresh_token);
+
         if (response.success) {
           navigate("/copilot");
         } else {
@@ -100,7 +105,7 @@ export function Page(): React.JSX.Element {
             default:
               setError("root", {
                 type: "server",
-                message: "Invalid credentials. Please try again.",
+                message: response?.message || "Invalid credentials. Please try again.",
               });
           }
         }
@@ -113,7 +118,7 @@ export function Page(): React.JSX.Element {
         setIsPending(false);
       }
     },
-    [setError, navigate]
+    [login, setError, navigate]
   );
   const benefits = [
     {
