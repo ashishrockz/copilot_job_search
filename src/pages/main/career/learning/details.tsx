@@ -1,307 +1,71 @@
 import * as React from "react";
-import { Controller, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z as zod } from "zod";
-import {
-  Box,
-  TextField,
-  Button,
-  FormControl,
-  FormLabel,
-  FormHelperText,
-  ToggleButtonGroup,
-  ToggleButton,
-  Autocomplete,
-  Chip,
-  Typography,
-} from "@mui/material";
-import { MapPin, ArrowRight } from "@phosphor-icons/react";
-
-/* ---------------- SCHEMA ---------------- */
-
-const schema = zod.object({
-  currentJobTitle: zod.string().min(1, "Current job title is required"),
-  yearsOfExperience: zod.string().min(1, "Years of experience is required"),
-  managingTeamMembers: zod.string().min(1, "Select team size"),
-  scope: zod.string().min(1, "Select scope"),
-  industrySector: zod.array(zod.string()).min(1, "Select at least one industry"),
-  country: zod.string().min(1, "Country is required"),
-  city: zod.string().optional(),
-  targetJobTitle: zod.string().min(1, "Target job title is required"),
-  targetIndustrySector: zod.array(zod.string()).min(1, "Select target industry"),
-  languageToUse: zod.string().min(1, "Language is required"),
-});
-
-type Values = zod.infer<typeof schema>;
-
-const defaultValues: Values = {
-  currentJobTitle: "",
-  yearsOfExperience: "",
-  managingTeamMembers: "",
-  scope: "",
-  industrySector: [],
-  country: "",
-  city: "",
-  targetJobTitle: "",
-  targetIndustrySector: [],
-  languageToUse: "",
-};
-
-/* ---------------- OPTIONS ---------------- */
-
-const teamSizeOptions = ["no", "1-4", "5-10", "10+"];
-const scopeOptions = ["national", "regional", "global"];
-const industryOptions = [
-  "Technology",
-  "Finance",
-  "Healthcare",
-  "Education",
-  "Manufacturing",
-  "Consulting",
-];
-const countryOptions = ["United States", "India", "Germany", "UK", "Canada"];
-const languageOptions = ["English", "Spanish", "German", "French", "Hindi"];
-
-/* ---------------- PAGE ---------------- */
+import { CareerProfileForm, CareerProfileFormValues } from "@/components/forms";
+import { Box, Container, Typography, Paper } from "@mui/material";
 
 export function Page(): React.JSX.Element {
-  const [isPending, setIsPending] = React.useState(false);
-
-  const {
-    control,
-    handleSubmit,
-    formState: { errors, isValid },
-  } = useForm<Values>({
-    defaultValues,
-    resolver: zodResolver(schema),
-    mode: "onChange",
-  });
-
-  const onSubmit = async (values: Values) => {
-    setIsPending(true);
-    try {
-      console.log("Career Profile:", values);
-      // await api.saveCareerProfile(values)
-    } finally {
-      setIsPending(false);
-    }
+  const handleSubmit = async (values: CareerProfileFormValues) => {
+    console.log("Form submitted:", values);
+    // Add your form submission logic here
+    // Example: call an API, generate report, etc.
   };
 
   return (
     <Box
-      component="form"
-      onSubmit={handleSubmit(onSubmit)}
-      className="space-y-6 max-w-4xl mx-auto"
+      sx={{
+        minHeight: "100vh",
+        backgroundColor: "#f9fafb",
+        py: { xs: 4, sm: 6, md: 8 },
+      }}
     >
-      {/* CURRENT JOB */}
-      <FormControl fullWidth error={!!errors.currentJobTitle}>
-        <FormLabel>Current job title</FormLabel>
-        <Controller
-          name="currentJobTitle"
-          control={control}
-          render={({ field }) => (
-            <TextField {...field} helperText={errors.currentJobTitle?.message} />
-          )}
-        />
-      </FormControl>
+      <Container maxWidth="lg">
+        <Box
+          sx={{
+            mb: { xs: 4, sm: 5, md: 6 },
+            textAlign: "center",
+          }}
+        >
+          <Typography
+            variant="h3"
+            component="h1"
+            sx={{
+              fontWeight: 700,
+              color: "#111827",
+              mb: 2,
+              fontSize: { xs: "1.875rem", sm: "2.25rem", md: "3rem" },
+            }}
+          >
+            Learning & Upskilling
+          </Typography>
+          <Typography
+            variant="body1"
+            sx={{
+              color: "#6b7280",
+              maxWidth: "600px",
+              mx: "auto",
+              fontSize: { xs: "0.875rem", sm: "1rem" },
+            }}
+          >
+            Enter your information to view in-demand skills and get personalized
+            recommendations of courses and certifications to achieve your target
+            job.
+          </Typography>
+        </Box>
 
-      {/* EXPERIENCE */}
-      <FormControl fullWidth error={!!errors.yearsOfExperience}>
-        <FormLabel>Years of experience</FormLabel>
-        <Controller
-          name="yearsOfExperience"
-          control={control}
-          render={({ field }) => (
-            <TextField {...field} helperText={errors.yearsOfExperience?.message} />
-          )}
-        />
-      </FormControl>
-
-      {/* TEAM SIZE */}
-      <FormControl error={!!errors.managingTeamMembers}>
-        <FormLabel>Managing team members</FormLabel>
-        <Controller
-          name="managingTeamMembers"
-          control={control}
-          render={({ field }) => (
-            <>
-              <ToggleButtonGroup
-                {...field}
-                exclusive
-                onChange={(_, v) => v && field.onChange(v)}
-              >
-                {teamSizeOptions.map((v) => (
-                  <ToggleButton key={v} value={v}>
-                    {v}
-                  </ToggleButton>
-                ))}
-              </ToggleButtonGroup>
-              <FormHelperText>{errors.managingTeamMembers?.message}</FormHelperText>
-            </>
-          )}
-        />
-      </FormControl>
-
-      {/* SCOPE */}
-      <FormControl error={!!errors.scope}>
-        <FormLabel>Scope</FormLabel>
-        <Controller
-          name="scope"
-          control={control}
-          render={({ field }) => (
-            <>
-              <ToggleButtonGroup
-                {...field}
-                exclusive
-                onChange={(_, v) => v && field.onChange(v)}
-              >
-                {scopeOptions.map((v) => (
-                  <ToggleButton key={v} value={v}>
-                    {v}
-                  </ToggleButton>
-                ))}
-              </ToggleButtonGroup>
-              <FormHelperText>{errors.scope?.message}</FormHelperText>
-            </>
-          )}
-        />
-      </FormControl>
-
-      {/* CURRENT INDUSTRY */}
-      <FormControl error={!!errors.industrySector}>
-        <FormLabel>Industry / Sector</FormLabel>
-        <Controller
-          name="industrySector"
-          control={control}
-          render={({ field }) => (
-            <Autocomplete
-              multiple
-              options={industryOptions}
-              value={field.value}
-              onChange={(_, v) => field.onChange(v)}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  helperText={errors.industrySector?.message}
-                />
-              )}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip label={option} {...getTagProps({ index })} />
-                ))
-              }
-            />
-          )}
-        />
-      </FormControl>
-
-      {/* LOCATION */}
-      <Box className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormControl error={!!errors.country}>
-          <FormLabel>Country</FormLabel>
-          <Controller
-            name="country"
-            control={control}
-            render={({ field }) => (
-              <Autocomplete
-                options={countryOptions}
-                value={field.value || null}
-                onChange={(_, v) => field.onChange(v || "")}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    helperText={errors.country?.message}
-                  />
-                )}
-              />
-            )}
+        <Paper
+          elevation={0}
+          sx={{
+            borderRadius: "16px",
+            border: "1px solid #e5e7eb",
+            p: { xs: 3, sm: 4, md: 6 },
+            backgroundColor: "white",
+          }}
+        >
+          <CareerProfileForm
+            onSubmit={handleSubmit}
+            submitButtonText="Generate Salary Benchmark Report"
           />
-        </FormControl>
-
-        <FormControl>
-          <FormLabel>City</FormLabel>
-          <Controller
-            name="city"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                InputProps={{
-                  endAdornment: <MapPin size={18} />,
-                }}
-              />
-            )}
-          />
-        </FormControl>
-      </Box>
-
-      {/* TARGET JOB */}
-      <FormControl error={!!errors.targetJobTitle}>
-        <FormLabel>Target job title</FormLabel>
-        <Controller
-          name="targetJobTitle"
-          control={control}
-          render={({ field }) => (
-            <TextField {...field} helperText={errors.targetJobTitle?.message} />
-          )}
-        />
-      </FormControl>
-
-      {/* TARGET INDUSTRY */}
-      <FormControl error={!!errors.targetIndustrySector}>
-        <FormLabel>Target industry / sector</FormLabel>
-        <Controller
-          name="targetIndustrySector"
-          control={control}
-          render={({ field }) => (
-            <Autocomplete
-              multiple
-              options={industryOptions}
-              value={field.value}
-              onChange={(_, v) => field.onChange(v)}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  helperText={errors.targetIndustrySector?.message}
-                />
-              )}
-            />
-          )}
-        />
-      </FormControl>
-
-      {/* LANGUAGE */}
-      <FormControl error={!!errors.languageToUse}>
-        <FormLabel>Language to use</FormLabel>
-        <Controller
-          name="languageToUse"
-          control={control}
-          render={({ field }) => (
-            <Autocomplete
-              options={languageOptions}
-              value={field.value || null}
-              onChange={(_, v) => field.onChange(v || "")}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  helperText={errors.languageToUse?.message}
-                />
-              )}
-            />
-          )}
-        />
-      </FormControl>
-
-      {/* SUBMIT */}
-      <Button
-        type="submit"
-        size="large"
-        variant="contained"
-        disabled={!isValid || isPending}
-        endIcon={<ArrowRight size={20} />}
-      >
-        {isPending ? "Processing..." : "Continue"}
-      </Button>
+        </Paper>
+      </Container>
     </Box>
   );
 }
