@@ -5,6 +5,7 @@ import {
     GraduationCap,
     Lightbulb
 } from "@phosphor-icons/react";
+import { useNavigate } from "react-router-dom";
 
 interface CareerCard {
     id: string;
@@ -46,6 +47,7 @@ const careerOptions: CareerCard[] = [
 ];
 
 export function Page(): React.JSX.Element {
+    const navigation = useNavigate()
     return (
         <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 py-12 px-4">
             <div className="max-w-5xl mx-auto">
@@ -62,6 +64,7 @@ export function Page(): React.JSX.Element {
                     {careerOptions.map((option) => (
                         <button
                             key={option.id}
+                             onClick={() => navigation(option?.id)}
                             className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-md transition-shadow duration-200 text-left w-full border border-gray-100"
                         >
                             <div className="flex items-start gap-4">
