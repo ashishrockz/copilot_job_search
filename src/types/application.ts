@@ -48,7 +48,7 @@ export interface Application {
   applicantEmail: string;
   applicantName: string;
   status: string;
-  appliedAt: Date;
+  appliedAt: Date | undefined;
   resumePath?: string | null;
   screenshotPath?: string | null;
   errorMessage?: string | null;
@@ -69,7 +69,7 @@ export interface ApplicationDetail {
   applicantEmail: string;
   applicantName: string;
   status: string;
-  appliedAt: Date;
+  appliedAt: Date | undefined;
   resumePath?: string | null;
   screenshotPath?: string | null;
   errorMessage?: string | null;
