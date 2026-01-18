@@ -13,7 +13,7 @@ export const applicationRoute: RouteObject = {
   children: [{
             index: true,
             lazy: async () => {
-                const { Page } = await import("@/pages/main/applications/deatils");
+                const { Page } = await import("@/pages/main/applications/list");
                 return { Component: Page };
             },
         },

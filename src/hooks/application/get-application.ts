@@ -1,5 +1,5 @@
-import { Application } from '@/models/applciation.adapter';
 import { getApplications } from '@/lib/application.service';
+import { Application } from '@/types/application';
 import { useEffect, useState } from 'react';
 
 
