@@ -17,6 +17,13 @@ export const route: RouteObject = {
 				return { Component: Page };
 			},
 		},
+    {
+			path:"create",
+			lazy: async () => {
+				const { Page } = await import("@/pages/main/copilots/create");
+				return { Component: Page };
+			},
+		},
 
   ],
 };

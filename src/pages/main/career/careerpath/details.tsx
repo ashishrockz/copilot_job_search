@@ -1,5 +1,5 @@
 import * as React from "react";
-import { CareerProfileForm, CareerProfileFormValues } from "@/components/forms";
+import { CareerProfileForm, CareerProfileFormValues } from "@/components/forms/career-profile-form";
 import { Box, Container, Typography, Paper } from "@mui/material";
 
 export function Page(): React.JSX.Element {

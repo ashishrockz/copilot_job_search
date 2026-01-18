@@ -42,6 +42,7 @@ import {
 } from "@phosphor-icons/react";
 import { CandidateProfile } from "@/models/candidatePreferences";
 import { useCandidateProfileList } from "@/hooks/onboarding/list";
+import { useNavigate } from "react-router-dom";
 
 // Custom MUI theme with refined aesthetics
 const theme = createTheme({
@@ -459,6 +460,7 @@ export function Page(): React.JSX.Element {
     message: string;
     severity: "success" | "error" | "info";
   }>({ open: false, message: "", severity: "info" });
+  const navigate = useNavigate();
 
   // Transform profiles to copilots when data loads
   useEffect(() => {
@@ -513,6 +515,7 @@ export function Page(): React.JSX.Element {
       return;
     }
     // Implement add copilot modal logic here
+    navigate("/copilot/create")
     console.log("Add new copilot");
   };
 
