@@ -43,6 +43,8 @@ export interface Step3Data {
   linkedInProfile: string;
   experienceSummary: string;
   screeningQuestions: string;
+  stateRegion: string;
+  postCode:string;
 }
 
 // Step 4: Copilot Configuration
@@ -110,6 +112,8 @@ const defaultFormData: CopilotFormData = {
     linkedInProfile: "",
     experienceSummary: "",
     screeningQuestions: "",
+    stateRegion:"",
+    postCode:""
   },
   step4: {
     applicationMode: "auto-save",

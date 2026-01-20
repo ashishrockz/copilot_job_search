@@ -25,7 +25,7 @@ const step1Schema = zod.object({
   onsiteLocations: zod.array(zod.string()).optional(),
   jobTypes: zod.array(zod.string()).min(1, { message: "Select at least one job type" }),
   searchMethod: zod.enum(["keywords", "favorite", "applied"]),
-  jobTitles: zod.array(zod.string()).min(1, { message: "Add at least one job title" }),
+  // jobTitles: zod.array(zod.string()).min(1, { message: "Add at least one job title" }),
 });
 
 type Step1FormValues = zod.infer<typeof step1Schema>;
@@ -521,7 +521,7 @@ export function CopilotStep1Form({ defaultValues, onNext }: CopilotStep1FormProp
         </FormControl>
       </Box>
 
-      {/* Job Titles Section */}
+      Job Titles Section
       {searchMethod === "keywords" && (
         <Box sx={{ mb: 5 }}>
           <FormControl fullWidth>
