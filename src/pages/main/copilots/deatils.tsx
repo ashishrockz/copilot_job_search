@@ -1,24 +1,14 @@
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
-  Card,
-  CardContent,
   Switch,
   IconButton,
   Button,
   Tooltip,
-  Chip,
-  LinearProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
   Skeleton,
   Snackbar,
   Alert,
 } from "@mui/material";
-import { ThemeProvider, createTheme } from "@mui/material/styles";
 import {
   BriefcaseIcon as Briefcase,
   MapPinIcon as MapPin,
@@ -28,10 +18,6 @@ import {
   PencilSimpleIcon as PencilSimple,
   PlusIcon as Plus,
   SparkleIcon as Sparkle,
-  ArrowsClockwiseIcon as ArrowsClockwise,
-  CheckCircleIcon as CheckCircle,
-  XCircleIcon as XCircle,
-
   BookmarkSimpleIcon as BookmarkSimple,
   LightningIcon as Lightning,
   QuestionIcon as Question,
@@ -39,308 +25,205 @@ import {
   TargetIcon as Target,
   GraduationCapIcon as GraduationCap,
   CaretRightIcon as CaretRight,
+  PlayIcon as Play,
 } from "@phosphor-icons/react";
-import { CandidateProfile } from "@/models/candidatePreferences";
-import { useCandidateProfileList } from "@/hooks/onboarding/list";
 import { useNavigate } from "react-router-dom";
-
-// Custom MUI theme with refined aesthetics
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: "#6366f1",
-      light: "#818cf8",
-      dark: "#4f46e5",
-    },
-    secondary: {
-      main: "#f59e0b",
-      light: "#fbbf24",
-      dark: "#d97706",
-    },
-    success: {
-      main: "#10b981",
-    },
-    error: {
-      main: "#ef4444",
-    },
-  },
-  typography: {
-    fontFamily: '"DM Sans", "Outfit", sans-serif',
-  },
-  shape: {
-    borderRadius: 16,
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          textTransform: "none",
-          fontWeight: 600,
-          borderRadius: 12,
-        },
-      },
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          borderRadius: 20,
-          boxShadow: "0 4px 24px -4px rgba(0, 0, 0, 0.08)",
-        },
-      },
-    },
-    MuiChip: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-          fontWeight: 500,
-        },
-      },
-    },
-  },
-});
-
-// Types for copilot configuration
-interface CopilotConfig {
-  id: number;
-  title: string;
-  searchMethod: string;
-  location: string;
-  jobMatch: string;
-  filters: string;
-  isActive: boolean;
-  savedJobs: number;
-  profile?: CandidateProfile;
-}
+import { useCopilots, useCopilotMutations } from "@/hooks/copilots";
+import { Copilot } from "@/types/copilot";
 
 // Helper function to safely display data
 const displayValue = (value: string | null | undefined): string => {
   return value && value.trim() !== "" ? value : "-";
 };
 
-const displayArrayValue = (arr: string[] | null | undefined): string => {
-  if (!arr || arr.length === 0) return "-";
-  return arr.join(", ");
-};
-
-// Transform profile to copilot config
-const transformProfileToConfig = (
-  profile: CandidateProfile,
-  index: number
-): CopilotConfig => {
-  const jobTitles = displayArrayValue(profile.preferences?.jobTitles);
-  const locations = displayArrayValue(profile.preferences?.workLocation);
-  const seniority = displayArrayValue(profile.preferences?.seniority);
-  const jobTypes = displayArrayValue(profile.preferences?.jobTypes);
-
-  return {
-    id: profile.id || index,
-    title: jobTitles !== "-" ? jobTitles : `Profile ${index + 1}`,
-    searchMethod: "Job Titles",
-    location: locations,
-    jobMatch: seniority !== "-" ? seniority : "-",
-    filters: jobTypes !== "-" ? `Job Types: ${jobTypes}` : "-",
-    isActive: true,
-    savedJobs: 0,
-    profile,
-  };
+// Get status display info
+const getStatusInfo = (status: Copilot["status"]) => {
+  switch (status) {
+    case "active":
+      return { label: "Active", isActive: true };
+    case "running":
+      return { label: "Running", isActive: true };
+    case "paused":
+      return { label: "Paused", isActive: false };
+    case "stopped":
+      return { label: "Stopped", isActive: false };
+    default:
+      return { label: status, isActive: false };
+  }
 };
 
 // Individual Copilot Card Component
 interface CopilotCardProps {
-  config: CopilotConfig;
+  copilot: Copilot;
   onToggle: (id: number) => void;
-  onEdit: (config: CopilotConfig) => void;
+  onEdit: (copilot: Copilot) => void;
   onDelete: (id: number) => void;
-  onOptimize: (id: number) => void;
+  onTrigger: (id: number) => void;
   index: number;
+  isUpdating: boolean;
+  isDeleting: boolean;
+  isTriggering: boolean;
 }
 
 function CopilotCard({
-  config,
+  copilot,
   onToggle,
   onEdit,
   onDelete,
-  onOptimize,
+  onTrigger,
   index,
+  isUpdating,
+  isDeleting,
+  isTriggering,
 }: CopilotCardProps) {
-  const gradients = [
-    "from-indigo-500 via-purple-500 to-pink-500",
-    "from-emerald-500 via-teal-500 to-cyan-500",
-    "from-amber-500 via-orange-500 to-red-500",
+  const headerGradients = [
+    "from-rose-500 to-pink-600",
+    "from-sky-500 to-blue-600",
+    "from-amber-500 to-orange-600",
   ];
 
-  const bgPatterns = [
-    "bg-gradient-to-br from-indigo-50 to-purple-50",
-    "bg-gradient-to-br from-emerald-50 to-teal-50",
-    "bg-gradient-to-br from-amber-50 to-orange-50",
-  ];
+  const gradient = headerGradients[index % 3];
+  const statusInfo = getStatusInfo(copilot.status);
 
-  const accentColors = [
-    { bg: "bg-indigo-100", text: "text-indigo-700", border: "border-indigo-200" },
-    { bg: "bg-emerald-100", text: "text-emerald-700", border: "border-emerald-200" },
-    { bg: "bg-amber-100", text: "text-amber-700", border: "border-amber-200" },
-  ];
-
-  const gradient = gradients[index % 3];
-  const bgPattern = bgPatterns[index % 3];
-  const accent = accentColors[index % 3];
+  // Compute display values
+  const autoSaveLabel = copilot.config?.autoApply ? "Auto-Save Jobs" : "Manual Save Jobs";
+  const searchMethod = copilot.config?.jobTitles?.length > 0 ? "Job Titles" : "Keywords";
+  const locationsDisplay = copilot.config?.locations?.length > 0
+    ? copilot.config.locations.slice(0, 3).join(", ") + (copilot.config.locations.length > 3 ? "..." : "")
+    : "Remote Worldwide";
+  const matchLevel = copilot.config?.experienceLevel?.length > 0 ? "Highest" : "Standard";
+  const filtersDisplay = [
+    copilot.config?.experienceLevel?.length > 0 ? "Seniority" : null,
+    copilot.config?.remoteOnly ? "Remote" : null,
+    copilot.config?.salaryMin || copilot.config?.salaryMax ? "Salary" : null,
+  ].filter(Boolean).join(", ") || "No filters";
 
   return (
-    <Card
-      className={`relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 ${bgPattern} border border-gray-100/50`}
-      sx={{
-        background: "rgba(255, 255, 255, 0.85)",
-        backdropFilter: "blur(20px)",
-      }}
-    >
-      {/* Decorative gradient bar */}
-      <div className={`h-1.5 bg-gradient-to-r ${gradient}`} />
-
-      {/* Header Section */}
-      <div className="px-5 pt-5 pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-bold text-gray-900 truncate leading-tight">
-              {displayValue(config.title)}
-            </h3>
-            <div className="flex items-center gap-2 mt-2">
-              <Chip
-                size="small"
-                label={config.isActive ? "Active" : "Paused"}
-                icon={
-                  config.isActive ? (
-                    <CheckCircle weight="fill" className="text-emerald-600" size={14} />
-                  ) : (
-                    <XCircle weight="fill" className="text-gray-400" size={14} />
-                  )
-                }
-                className={`${
-                  config.isActive
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-gray-100 text-gray-500"
-                } font-medium`}
-              />
-            </div>
+    <div className="flex flex-col bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 h-full">
+      {/* Header */}
+      <div className={`bg-gradient-to-r ${gradient} px-6 py-5`}>
+        <div className="flex items-start justify-between">
+          <h3 className="text-white font-bold text-lg leading-snug line-clamp-2 pr-4 text-shadow-sm">
+            {displayValue(copilot.name)}
+          </h3>
+          <div className="bg-white/20 backdrop-blur-md rounded-lg p-1.5 text-white/90">
+            <Target weight="duotone" size={20} />
           </div>
-          <Switch
-            checked={config.isActive}
-            onChange={() => onToggle(config.id)}
-            color="primary"
-            size="small"
-          />
         </div>
       </div>
 
-      {/* Details Section */}
-      <CardContent className="px-5 py-3 space-y-3">
-        <div className={`flex items-center gap-3 p-3 rounded-xl ${accent.bg} ${accent.border} border`}>
-          <div className={`p-2 rounded-lg bg-white/80 ${accent.text}`}>
-            <BookmarkSimple weight="duotone" size={18} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Auto-Save Jobs</p>
-            <p className={`text-sm font-semibold ${accent.text}`}>Enabled</p>
+      <div className="flex-1 p-6 space-y-4">
+        {/* Status Badge */}
+        <div className="flex items-center justify-between pb-4 border-b border-gray-50">
+          <span className="text-sm font-medium text-gray-500">Status</span>
+          <div className="flex items-center gap-3">
+            <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${statusInfo.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'
+              }`}>
+              {statusInfo.label.toUpperCase()}
+            </span>
+            <Switch
+              checked={statusInfo.isActive}
+              onChange={() => onToggle(copilot.id)}
+              size="small"
+              disabled={isUpdating}
+              className="scale-90"
+            />
           </div>
         </div>
 
-        <div className="space-y-2.5">
-          <DetailRow
-            icon={<MagnifyingGlass weight="duotone" size={16} />}
-            label="Search Method"
-            value={displayValue(config.searchMethod)}
-          />
-          <DetailRow
-            icon={<MapPin weight="duotone" size={16} />}
-            label="Location"
-            value={displayValue(config.location)}
-            truncate
-          />
-          <DetailRow
-            icon={<Target weight="duotone" size={16} />}
-            label="Job Match"
-            value={displayValue(config.jobMatch)}
-          />
-          <DetailRow
-            icon={<Sliders weight="duotone" size={16} />}
-            label="Filters"
-            value={displayValue(config.filters)}
-            truncate
-          />
-        </div>
-      </CardContent>
+        {/* Details List */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500 flex-shrink-0">
+              <BookmarkSimple weight="duotone" size={16} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-0.5">Mode</p>
+              <p className="text-sm font-semibold text-gray-700 truncate">{autoSaveLabel}</p>
+            </div>
+          </div>
 
-      {/* Actions Section */}
-      <div className="px-5 pb-5 pt-2 flex items-center justify-between gap-2 border-t border-gray-100/80 mt-2">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 flex-shrink-0">
+              <MagnifyingGlass weight="duotone" size={16} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-0.5">Method</p>
+              <p className="text-sm font-semibold text-gray-700 truncate">{searchMethod}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-purple-500 flex-shrink-0">
+              <MapPin weight="duotone" size={16} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-0.5">Location</p>
+              <p className="text-sm font-semibold text-gray-700 truncate" title={copilot.config?.locations?.join(", ")}>
+                {locationsDisplay}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center text-orange-500 flex-shrink-0">
+              <Sliders weight="duotone" size={16} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-0.5">Filters</p>
+              <p className="text-sm font-semibold text-gray-700 truncate">
+                {filtersDisplay}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer Actions */}
+      <div className="bg-gray-50/50 p-4 border-t border-gray-100 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1">
-          <Tooltip title="Edit Configuration" arrow>
+          <Tooltip title="Run Now" arrow>
             <IconButton
               size="small"
-              onClick={() => onEdit(config)}
-              className="text-gray-500 hover:text-indigo-600 hover:bg-indigo-50"
+              onClick={() => onTrigger(copilot.id)}
+              disabled={isTriggering || copilot.status === "running"}
+              className="hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
             >
-              <PencilSimple weight="duotone" size={18} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Refresh" arrow>
-            <IconButton
-              size="small"
-              className="text-gray-500 hover:text-emerald-600 hover:bg-emerald-50"
-            >
-              <ArrowsClockwise weight="duotone" size={18} />
+              <Play weight="bold" size={18} />
             </IconButton>
           </Tooltip>
           <Tooltip title="Delete" arrow>
             <IconButton
               size="small"
-              onClick={() => onDelete(config.id)}
-              className="text-gray-500 hover:text-red-600 hover:bg-red-50"
+              onClick={() => onDelete(copilot.id)}
+              disabled={isDeleting}
+              className="hover:bg-red-50 hover:text-red-600 transition-colors"
             >
-              <Trash weight="duotone" size={18} />
+              <Trash weight="bold" size={18} />
             </IconButton>
           </Tooltip>
         </div>
 
-        <Button
-          size="small"
-          variant="contained"
-          startIcon={<Sparkle weight="fill" size={16} />}
-          onClick={() => onOptimize(config.id)}
-          className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-lg shadow-amber-200/50"
-          sx={{
-            background: "linear-gradient(135deg, #f59e0b 0%, #f97316 100%)",
-            "&:hover": {
-              background: "linear-gradient(135deg, #d97706 0%, #ea580c 100%)",
-            },
-          }}
-        >
-          Optimize
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="small"
+            onClick={() => onEdit(copilot)}
+            startIcon={<PencilSimple size={16} />}
+            className="text-gray-600 hover:text-gray-900 normal-case font-medium"
+          >
+            Edit
+          </Button>
+          <Button
+            size="small"
+            variant="contained"
+            onClick={() => onEdit(copilot)}
+            startIcon={<Sparkle weight="fill" size={16} />}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 normal-case rounded-xl font-semibold px-4"
+          >
+            Tune
+          </Button>
+        </div>
       </div>
-    </Card>
-  );
-}
-
-// Detail Row Component
-interface DetailRowProps {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  truncate?: boolean;
-}
-
-function DetailRow({ icon, label, value, truncate }: DetailRowProps) {
-  return (
-    <div className="flex items-center gap-3 text-sm">
-      <span className="text-gray-400 flex-shrink-0">{icon}</span>
-      <span className="text-gray-500 font-medium min-w-0">{label}:</span>
-      <span
-        className={`text-gray-800 font-semibold ${truncate ? "truncate" : ""} ${
-          value === "-" ? "text-gray-400 font-normal italic" : ""
-        }`}
-        title={truncate ? value : undefined}
-      >
-        {value}
-      </span>
     </div>
   );
 }
@@ -353,75 +236,65 @@ interface AddCardProps {
 
 function AddCard({ onAdd, cardsCount }: AddCardProps) {
   return (
-    <Card
+    <div
       onClick={onAdd}
-      className="relative overflow-hidden cursor-pointer transition-all duration-500 hover:shadow-xl hover:-translate-y-1 border-2 border-dashed border-gray-300 hover:border-indigo-400 bg-gradient-to-br from-gray-50 to-white group"
-      sx={{
-        minHeight: 380,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
+      className="group relative flex flex-col items-center justify-center min-h-[480px] bg-gradient-to-br from-indigo-50/50 to-white rounded-3xl border-2 border-dashed border-indigo-200 hover:border-indigo-400 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden"
     >
-      <div className="flex flex-col items-center gap-4 p-6 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-indigo-100/50">
-          <Plus
-            weight="bold"
-            size={32}
-            className="text-indigo-600 group-hover:rotate-90 transition-transform duration-300"
-          />
+      <div className="absolute inset-0 bg-white/40 group-hover:bg-transparent transition-colors duration-300" />
+
+      {/* Decorative Blobs */}
+      <div className="absolute top-10 right-10 w-32 h-32 bg-purple-200/30 rounded-full blur-2xl group-hover:scale-110 transition-transform duration-500" />
+      <div className="absolute bottom-10 left-10 w-32 h-32 bg-indigo-200/30 rounded-full blur-2xl group-hover:scale-110 transition-transform duration-500" />
+
+      <div className="relative z-10 flex flex-col items-center text-center p-8">
+        <div className="w-20 h-20 rounded-2xl bg-white shadow-lg shadow-indigo-100 flex items-center justify-center mb-6 group-hover:rotate-12 transition-transform duration-300">
+          <Plus weight="bold" size={40} className="text-indigo-600" />
         </div>
-        <div>
-          <h3 className="text-lg font-bold text-gray-800 mb-1">Add New Copilot</h3>
-          <p className="text-sm text-gray-500">
-            {3 - cardsCount} slot{3 - cardsCount !== 1 ? "s" : ""} remaining
-          </p>
-        </div>
+
+        <h3 className="text-xl font-bold text-gray-900 mb-2">Create New Copilot</h3>
+        <p className="text-gray-500 mb-6 max-w-[200px]">
+          Add another automated assistant to your fleet. <br />
+          <span className="font-semibold text-indigo-600">{3 - cardsCount} slots remaining</span>
+        </p>
+
         <Button
-          variant="outlined"
-          color="primary"
-          startIcon={<Lightning weight="fill" size={18} />}
-          className="mt-2 border-2 hover:bg-indigo-50"
+          variant="contained"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-2 px-6 shadow-lg shadow-indigo-200 font-semibold normal-case group-hover:scale-105 transition-transform"
         >
-          Create Copilot
+          Start Setup
         </Button>
       </div>
-
-      {/* Decorative elements */}
-      <div className="absolute top-4 right-4 w-24 h-24 bg-gradient-to-br from-indigo-200/30 to-purple-200/30 rounded-full blur-2xl" />
-      <div className="absolute bottom-4 left-4 w-20 h-20 bg-gradient-to-br from-amber-200/30 to-orange-200/30 rounded-full blur-2xl" />
-    </Card>
+    </div>
   );
 }
 
 // Loading Skeleton Card
 function SkeletonCard() {
   return (
-    <Card className="overflow-hidden">
-      <Skeleton variant="rectangular" height={6} />
-      <div className="p-5 space-y-4">
-        <div className="flex justify-between">
-          <Skeleton variant="text" width="60%" height={28} />
-          <Skeleton variant="circular" width={40} height={24} />
+    <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden h-full min-h-[480px]">
+      <Skeleton variant="rectangular" height={80} className="bg-gray-100" />
+      <div className="p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <Skeleton width={60} height={20} className="rounded-lg" />
+          <Skeleton width={40} height={24} className="rounded-full" />
         </div>
-        <Skeleton variant="rounded" height={60} />
-        <div className="space-y-2">
-          <Skeleton variant="text" width="80%" />
-          <Skeleton variant="text" width="70%" />
-          <Skeleton variant="text" width="60%" />
-          <Skeleton variant="text" width="75%" />
+        <div className="space-y-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="flex items-center gap-3">
+              <Skeleton variant="circular" width={32} height={32} />
+              <div className="flex-1">
+                <Skeleton width="30%" height={12} className="mb-1" />
+                <Skeleton width="60%" height={16} />
+              </div>
+            </div>
+          ))}
         </div>
-        <div className="flex justify-between pt-4">
-          <div className="flex gap-2">
-            <Skeleton variant="circular" width={32} height={32} />
-            <Skeleton variant="circular" width={32} height={32} />
-            <Skeleton variant="circular" width={32} height={32} />
-          </div>
-          <Skeleton variant="rounded" width={100} height={36} />
+        <div className="pt-4 flex justify-between">
+          <Skeleton width={80} height={32} className="rounded-lg" />
+          <Skeleton width={100} height={36} className="rounded-xl" />
         </div>
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -434,75 +307,116 @@ interface GuideCardProps {
 
 function GuideCard({ icon, title, gradient }: GuideCardProps) {
   return (
-    <button className="group flex flex-col items-center gap-3 p-6 rounded-2xl bg-white border border-gray-100 hover:border-indigo-200 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+    <button className="group relative flex flex-col items-center gap-4 p-6 rounded-2xl bg-white border border-gray-100 hover:border-indigo-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 w-full">
       <div
-        className={`w-14 h-14 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}
+        className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}
       >
         {icon}
       </div>
-      <span className="text-sm font-semibold text-gray-700 text-center group-hover:text-indigo-600 transition-colors">
-        {title}
-      </span>
-      <CaretRight
-        weight="bold"
-        size={16}
-        className="text-gray-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all"
-      />
+      <div className="text-center">
+        <span className="text-sm font-bold text-gray-700 block mb-1 group-hover:text-indigo-700 transition-colors">
+          {title}
+        </span>
+        <div className="flex items-center justify-center gap-1 text-xs text-gray-400 font-medium group-hover:text-indigo-500 transition-colors">
+          Read Guide <CaretRight weight="bold" />
+        </div>
+      </div>
+
     </button>
   );
 }
 
 export function Page(): React.JSX.Element {
-  const { profiles, loading, error, refetch } = useCandidateProfileList("user@abc.com");
-  const [copilots, setCopilots] = useState<CopilotConfig[]>([]);
+  const { copilots, loading, error, refetch } = useCopilots();
+  const {
+    update,
+    updateState,
+    remove,
+    deleteState,
+    trigger,
+    triggerState,
+  } = useCopilotMutations();
+
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
     severity: "success" | "error" | "info";
   }>({ open: false, message: "", severity: "info" });
+
   const navigate = useNavigate();
 
-  // Transform profiles to copilots when data loads
-  useEffect(() => {
-    if (profiles && profiles.length > 0) {
-      const transformedCopilots = profiles
-        .slice(0, 3)
-        .map((profile, index) => transformProfileToConfig(profile, index));
-      setCopilots(transformedCopilots);
+  const handleToggle = async (id: number) => {
+    const copilot = copilots.find((c) => c.id === id);
+    if (!copilot) return;
+
+    const newStatus = copilot.status === "active" || copilot.status === "running"
+      ? "paused"
+      : "active";
+
+    const success = await update(id, { status: newStatus });
+
+    if (success) {
+      setSnackbar({
+        open: true,
+        message: "Copilot status updated",
+        severity: "success",
+      });
+      refetch();
+    } else {
+      setSnackbar({
+        open: true,
+        message: updateState.error || "Failed to update copilot",
+        severity: "error",
+      });
     }
-  }, [profiles]);
-
-  const handleToggle = (id: number) => {
-    setCopilots((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, isActive: !c.isActive } : c))
-    );
-    setSnackbar({
-      open: true,
-      message: "Copilot status updated",
-      severity: "success",
-    });
   };
 
-  const handleEdit = (config: CopilotConfig) => {
-    console.log("Edit copilot:", config);
-    // Implement edit modal logic here
+  const handleEdit = (copilot: Copilot) => {
+    navigate(`/copilot/edit/${copilot.id}`);
   };
 
-  const handleDelete = (id: number) => {
-    setCopilots((prev) => prev.filter((c) => c.id !== id));
-    setSnackbar({
-      open: true,
-      message: "Copilot deleted successfully",
-      severity: "success",
-    });
+  const handleDelete = async (id: number) => {
+    const success = await remove(id);
+
+    if (success) {
+      setSnackbar({
+        open: true,
+        message: "Copilot deleted successfully",
+        severity: "success",
+      });
+      refetch();
+    } else {
+      setSnackbar({
+        open: true,
+        message: deleteState.error || "Failed to delete copilot",
+        severity: "error",
+      });
+    }
   };
 
-  const handleOptimize = (id: number) => {
+  const handleTrigger = async (id: number) => {
     setSnackbar({
       open: true,
-      message: "Optimizing copilot configuration...",
+      message: "Triggering copilot...",
       severity: "info",
     });
+
+    const success = await trigger(id);
+
+    if (success) {
+      setSnackbar({
+        open: true,
+        message: "Copilot triggered successfully",
+        severity: "success",
+      });
+      refetch();
+    } else {
+      setSnackbar({
+        open: true,
+        message: triggerState.error || "Failed to trigger copilot",
+        severity: "error",
+      });
+    }
   };
 
   const handleAddCopilot = () => {
@@ -514,154 +428,128 @@ export function Page(): React.JSX.Element {
       });
       return;
     }
-    // Implement add copilot modal logic here
-    navigate("/copilot/create")
-    console.log("Add new copilot");
+    navigate("/copilot/create");
   };
 
   const guides = [
     {
-      icon: <Rocket weight="fill" size={24} />,
-      title: "How copilot works",
+      icon: <Rocket weight="fill" size={32} />,
+      title: "How Copilot works",
       gradient: "from-indigo-500 to-purple-500",
     },
     {
-      icon: <GraduationCap weight="fill" size={24} />,
-      title: "How to train your copilot",
+      icon: <GraduationCap weight="fill" size={32} />,
+      title: "Training Basics",
       gradient: "from-emerald-500 to-teal-500",
     },
     {
-      icon: <Briefcase weight="fill" size={24} />,
-      title: "How to apply to external jobs",
+      icon: <Briefcase weight="fill" size={32} />,
+      title: "Applying to Jobs",
       gradient: "from-amber-500 to-orange-500",
     },
     {
-      icon: <Question weight="fill" size={24} />,
-      title: "FAQ",
+      icon: <Question weight="fill" size={32} />,
+      title: "FAQ & Support",
       gradient: "from-rose-500 to-pink-500",
     },
   ];
 
   return (
-    <ThemeProvider theme={theme}>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30">
-        {/* Decorative background elements */}
-        <div className="fixed inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-indigo-200/40 to-purple-200/40 rounded-full blur-3xl" />
-          <div className="absolute top-1/2 -left-40 w-96 h-96 bg-gradient-to-br from-emerald-200/30 to-teal-200/30 rounded-full blur-3xl" />
-          <div className="absolute -bottom-40 right-1/3 w-72 h-72 bg-gradient-to-br from-amber-200/30 to-orange-200/30 rounded-full blur-3xl" />
+    <div className="min-h-screen bg-gray-50/50 pb-20">
+
+      {/* Page Header */}
+      <div className="bg-white border-b border-gray-100 pt-8 pb-12 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+              <Lightning weight="fill" size={28} />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">My Copilots</h1>
+              <p className="text-gray-500">Manage your active job search assistants</p>
+            </div>
+          </div>
         </div>
+      </div>
 
-        <div className="relative max-w-7xl mx-auto px-6 py-8">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-200/50">
-                <Lightning weight="fill" size={22} className="text-white" />
-              </div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-indigo-900 to-purple-900 bg-clip-text text-transparent">
-                Copilots
-              </h1>
-            </div>
-            <p className="text-gray-500 ml-13 pl-0.5">
-              Manage your automated job search assistants
-            </p>
-          </div>
+      <div className="max-w-7xl mx-auto px-6 -mt-6">
+        {/* Error State */}
+        {error && (
+          <Alert severity="error" className="mb-6 rounded-xl shadow-sm border border-red-100">
+            {error}
+            <Button size="small" onClick={refetch} className="ml-4 font-semibold">
+              Retry Connection
+            </Button>
+          </Alert>
+        )}
 
-          {/* Error State */}
-          {error && (
-            <Alert severity="error" className="mb-6 rounded-xl">
-              {error}
-              <Button size="small" onClick={refetch} className="ml-4">
-                Retry
-              </Button>
-            </Alert>
-          )}
-
-          {/* Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {loading ? (
-              <>
-                <SkeletonCard />
-                <SkeletonCard />
-                <SkeletonCard />
-              </>
-            ) : (
-              <>
-                {copilots.map((copilot, index) => (
-                  <CopilotCard
-                    key={copilot.id}
-                    config={copilot}
-                    onToggle={handleToggle}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onOptimize={handleOptimize}
-                    index={index}
-                  />
-                ))}
-                {copilots.length < 3 && (
-                  <AddCard onAdd={handleAddCopilot} cardsCount={copilots.length} />
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Stats Banner */}
-          {/* <div className="mb-8">
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-1">
-              <div className="relative bg-white/95 backdrop-blur-xl rounded-xl px-6 py-5 flex items-center justify-center gap-4">
-                <span className="text-3xl animate-bounce">🎉</span>
-                <p className="text-lg text-gray-700">
-                  Your copilots have saved{" "}
-                  <span className="font-bold text-2xl bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                    {totalSavedJobs}
-                  </span>{" "}
-                  jobs since {savedJobsDate}
-                </p>
-              </div>
-            </div>
-          </div> */}
-
-          {/* Guides Section */}
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-100 shadow-xl shadow-gray-100/50 overflow-hidden">
-            <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
-              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                <GraduationCap weight="duotone" size={24} className="text-indigo-500" />
-                Guides
-              </h2>
-              <p className="text-sm text-gray-500 mt-1">
-                Learn how to get the most out of your copilots
-              </p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-6">
-              {guides.map((guide, index) => (
-                <GuideCard
-                  key={index}
-                  icon={guide.icon}
-                  title={guide.title}
-                  gradient={guide.gradient}
+        {/* Copilot Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+          {loading ? (
+            <>
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </>
+          ) : (
+            <>
+              {copilots.map((copilot, index) => (
+                <CopilotCard
+                  key={copilot.id}
+                  copilot={copilot}
+                  onToggle={handleToggle}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onTrigger={handleTrigger}
+                  index={index}
+                  isUpdating={updateState.loading}
+                  isDeleting={deleteState.loading}
+                  isTriggering={triggerState.loading}
                 />
               ))}
-            </div>
-          </div>
+              {copilots.length < 3 && (
+                <AddCard onAdd={handleAddCopilot} cardsCount={copilots.length} />
+              )}
+            </>
+          )}
         </div>
 
-        {/* Snackbar for notifications */}
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={4000}
-          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-          anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-        >
-          <Alert
-            severity={snackbar.severity}
-            onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-            className="rounded-xl shadow-lg"
-          >
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
+        {/* Guides Section */}
+        <div className="mb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-8 w-1 bg-indigo-500 rounded-full" />
+            <h2 className="text-2xl font-bold text-gray-900">Knowledge Base</h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {guides.map((guide, index) => (
+              <GuideCard
+                key={index}
+                icon={guide.icon}
+                title={guide.title}
+                gradient={guide.gradient}
+              />
+            ))}
+          </div>
+        </div>
       </div>
-    </ThemeProvider>
+
+      {/* Snackbar Notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+          className="rounded-xl shadow-lg border border-gray-100"
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </div>
   );
 }

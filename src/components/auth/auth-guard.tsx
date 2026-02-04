@@ -1,12 +1,15 @@
 import React, { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Box, CircularProgress } from "@mui/material";
 
 export interface AuthGuardProps {
   children: React.ReactNode;
 }
 
+/**
+ * AuthGuard - Protects routes that require authentication
+ * Redirects unauthenticated users to login page
+ */
 export function AuthGuard({ children }: AuthGuardProps): React.JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
@@ -25,23 +28,15 @@ export function AuthGuard({ children }: AuthGuardProps): React.JSX.Element {
   // Show loading spinner while checking authentication
   if (loading) {
     return (
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "100vh",
-          bgcolor: "background.default",
-        }}
-      >
-        <CircularProgress size={48} />
-      </Box>
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
+      </div>
     );
   }
 
   // Only render children if authenticated
   if (!isAuthenticated) {
-    return <></>
+    return <></>;
   }
 
   return <>{children}</>;

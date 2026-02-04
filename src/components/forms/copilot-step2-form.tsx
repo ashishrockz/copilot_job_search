@@ -6,20 +6,27 @@ import {
   Box,
   TextField,
   Button,
-  FormControl,
-  FormLabel,
   Typography,
   Chip,
   Autocomplete,
   Switch,
   FormControlLabel,
   Slider,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  FormHelperText,
+  Paper,
+  Grid,
+  Collapse,
 } from "@mui/material";
-import { ArrowRight, ArrowLeft, CaretDown } from "@phosphor-icons/react";
+import {
+  ArrowRightIcon as ArrowRight,
+  ArrowLeftIcon as ArrowLeft,
+  LightningIcon as Lightning,
+  FunnelIcon as Funnel,
+  ClockIcon as Clock,
+  CaretDownIcon as CaretDown,
+  CaretUpIcon as CaretUp,
+  WarningIcon as Warning,
+  SlidersIcon as Sliders,
+} from "@phosphor-icons/react";
 import { Step2Data } from "@/context/copilot-form-context";
 
 // Zod validation schema
@@ -49,7 +56,7 @@ const seniorityOptions = [
   { value: "entry", label: "Entry Level" },
   { value: "associate", label: "Associate Level" },
   { value: "mid", label: "Mid-to-Senior Level" },
-  { value: "director", label: "Director Level and above" },
+  { value: "director", label: "Director Level+" },
 ];
 
 const timeZoneOptions = [
@@ -72,14 +79,118 @@ const industryOptions = [
   "Marketing",
 ];
 
-const languageOptions = ["English", "Spanish", "French", "German", "Mandarin", "Japanese", "Portuguese"];
+const languageOptions = [
+  "English",
+  "Spanish",
+  "French",
+  "German",
+  "Mandarin",
+  "Japanese",
+  "Portuguese",
+];
+
+// Section Header Component
+const SectionHeader = ({
+  icon,
+  title,
+  subtitle,
+  color = "#7c3aed",
+  action,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle?: string;
+  color?: string;
+  action?: React.ReactNode;
+}) => (
+  <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 3 }}>
+    <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
+      <Box
+        sx={{
+          width: 40,
+          height: 40,
+          borderRadius: "12px",
+          background: `linear-gradient(135deg, ${color}20 0%, ${color}10 100%)`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: color,
+          flexShrink: 0,
+        }}
+      >
+        {icon}
+      </Box>
+      <Box>
+        <Typography
+          variant="h6"
+          sx={{
+            fontWeight: 700,
+            color: "#1f2937",
+            fontSize: { xs: "1rem", sm: "1.125rem" },
+            lineHeight: 1.3,
+          }}
+        >
+          {title}
+        </Typography>
+        {subtitle && (
+          <Typography
+            variant="body2"
+            sx={{ color: "#6b7280", fontSize: "0.875rem", mt: 0.5 }}
+          >
+            {subtitle}
+          </Typography>
+        )}
+      </Box>
+    </Box>
+    {action}
+  </Box>
+);
+
+// Form Label Component
+const StyledLabel = ({ children, optional }: { children: React.ReactNode; optional?: boolean }) => (
+  <Typography
+    sx={{
+      fontSize: "0.875rem",
+      fontWeight: 600,
+      color: "#374151",
+      mb: 1,
+      display: "block",
+    }}
+  >
+    {children}
+    {optional && <span style={{ color: "#9ca3af", fontWeight: 400, marginLeft: 4 }}>(optional)</span>}
+  </Typography>
+);
+
+// Text Field Styles
+const textFieldSx = {
+  "& .MuiOutlinedInput-root": {
+    borderRadius: "10px",
+    backgroundColor: "#f9fafb",
+    transition: "all 0.2s ease",
+    "& fieldset": {
+      borderColor: "#e5e7eb",
+    },
+    "&:hover fieldset": {
+      borderColor: "#d1d5db",
+    },
+    "&.Mui-focused": {
+      backgroundColor: "#fff",
+      "& fieldset": {
+        borderColor: "#7c3aed",
+        borderWidth: "2px",
+      },
+    },
+  },
+};
 
 export function CopilotStep2Form({ defaultValues, onNext, onBack }: CopilotStep2FormProps): React.JSX.Element {
+  const [showAdvanced, setShowAdvanced] = React.useState(false);
+
   const {
     control,
     handleSubmit,
     watch,
-    formState: { errors },
   } = useForm<Step2FormValues>({
     defaultValues: {
       jobMatchEnabled: defaultValues?.jobMatchEnabled ?? true,
@@ -98,94 +209,86 @@ export function CopilotStep2Form({ defaultValues, onNext, onBack }: CopilotStep2
   });
 
   const jobMatchEnabled = watch("jobMatchEnabled");
-  const jobMatchLevel = watch("jobMatchLevel");
-
-  const getJobMatchLabel = (value: number) => {
-    if (value === 0) return "High";
-    if (value === 1) return "Higher";
-    return "Highest";
-  };
 
   return (
-    <Box component="form" onSubmit={handleSubmit(onNext)} sx={{ width: "100%" }}>
-      <Typography
-        variant="h6"
-        sx={{
-          mb: 1,
-          fontWeight: 600,
-          fontSize: { xs: "1.125rem", sm: "1.25rem" },
-          color: "#111827",
-        }}
-      >
-        Next, narrow your search with optional filters
-      </Typography>
-
-      {/* Job Match Section */}
-      <Box sx={{ mb: 5 }}>
-        <Box
+    <Box
+      component="form"
+      onSubmit={handleSubmit(onNext)}
+      sx={{ width: "100%", maxWidth: 700, mx: "auto" }}
+    >
+      {/* Page Title - Hidden on mobile */}
+      <Box sx={{ display: { xs: "none", sm: "block" }, mb: 4, textAlign: "center" }}>
+        <Typography
+          variant="h5"
           sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            mb: 2,
+            fontWeight: 700,
+            fontSize: { sm: "1.25rem", md: "1.5rem" },
+            color: "#111827",
+            mb: 1,
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <Box
-              sx={{
-                width: 32,
-                height: 32,
-                borderRadius: "50%",
-                backgroundColor: "#7c3aed",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Typography sx={{ color: "white", fontWeight: 600 }}>⚡</Typography>
-            </Box>
-            <FormLabel
-              sx={{
-                fontWeight: 600,
-                fontSize: { xs: "0.9375rem", sm: "1rem" },
-                color: "#374151",
-              }}
-            >
-              Job Match
-            </FormLabel>
-          </Box>
-          <Controller
-            name="jobMatchEnabled"
-            control={control}
-            render={({ field }) => (
-              <Switch
-                {...field}
-                checked={field.value}
-                sx={{
-                  "& .MuiSwitch-switchBase.Mui-checked": {
-                    color: "#7c3aed",
-                  },
-                  "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-                    backgroundColor: "#7c3aed",
-                  },
-                }}
-              />
-            )}
-          />
-        </Box>
+          Refine Your Search
+        </Typography>
+        <Typography
+          variant="body2"
+          sx={{ color: "#6b7280", fontSize: "0.9375rem" }}
+        >
+          Narrow down jobs with optional filters
+        </Typography>
+      </Box>
 
-        {jobMatchEnabled && (
-          <Box>
-            <Typography
-              variant="body2"
-              sx={{
-                mb: 2,
-                color: "#6b7280",
-                fontSize: { xs: "0.8125rem", sm: "0.875rem" },
-              }}
-            >
-              💡 Your copilot will <strong>only</strong> apply to jobs where you meet <strong>more than half</strong> of
-              the key requirements.
+      {/* Job Match Section */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 3, sm: 4 },
+          borderRadius: "16px",
+          border: "1px solid #e5e7eb",
+          mb: 3,
+          background: jobMatchEnabled
+            ? "linear-gradient(135deg, #f5f3ff 0%, #faf5ff 100%)"
+            : undefined,
+        }}
+      >
+        <SectionHeader
+          icon={<Lightning size={22} weight="duotone" />}
+          title="Job Match"
+          subtitle="Only apply to jobs where you meet requirements"
+          color="#7c3aed"
+          action={
+            <Controller
+              name="jobMatchEnabled"
+              control={control}
+              render={({ field }) => (
+                <Switch
+                  {...field}
+                  checked={field.value}
+                  sx={{
+                    "& .MuiSwitch-switchBase.Mui-checked": {
+                      color: "#7c3aed",
+                    },
+                    "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                      backgroundColor: "#7c3aed",
+                    },
+                  }}
+                />
+              )}
+            />
+          }
+        />
+
+        <Collapse in={jobMatchEnabled}>
+          <Box
+            sx={{
+              p: 2,
+              backgroundColor: "#fff",
+              borderRadius: "12px",
+              border: "1px solid #e5e7eb",
+            }}
+          >
+            <Typography sx={{ fontSize: "0.875rem", color: "#6b7280", mb: 3 }}>
+              Your copilot will only apply to jobs where you meet{" "}
+              <strong>more than half</strong> of the key requirements.
             </Typography>
 
             <Controller
@@ -194,7 +297,6 @@ export function CopilotStep2Form({ defaultValues, onNext, onBack }: CopilotStep2
               render={({ field }) => (
                 <Box sx={{ px: 2 }}>
                   <Slider
-                    {...field}
                     value={field.value === "high" ? 0 : field.value === "higher" ? 1 : 2}
                     onChange={(_, value) => {
                       const level = value === 0 ? "high" : value === 1 ? "higher" : "highest";
@@ -221,7 +323,7 @@ export function CopilotStep2Form({ defaultValues, onNext, onBack }: CopilotStep2
                         backgroundColor: "#7c3aed",
                       },
                       "& .MuiSlider-markLabel": {
-                        fontSize: { xs: "0.75rem", sm: "0.8125rem" },
+                        fontSize: "0.8125rem",
                         color: "#6b7280",
                       },
                     }}
@@ -230,182 +332,157 @@ export function CopilotStep2Form({ defaultValues, onNext, onBack }: CopilotStep2
               )}
             />
           </Box>
-        )}
-      </Box>
+        </Collapse>
+      </Paper>
 
       {/* Seniority Section */}
-      <Box sx={{ mb: 4 }}>
-        <FormControl fullWidth>
-          <FormLabel
-            sx={{
-              mb: 1.5,
-              fontWeight: 600,
-              fontSize: { xs: "0.875rem", sm: "0.9375rem" },
-              color: "#374151",
-            }}
-          >
-            Seniority <span style={{ color: "#9ca3af", fontWeight: 400 }}>(optional)</span>
-          </FormLabel>
-          <Typography
-            variant="body2"
-            sx={{
-              mb: 2,
-              color: "#6b7280",
-              fontSize: { xs: "0.75rem", sm: "0.8125rem" },
-            }}
-          >
-            Filter jobs by seniority. View an explanation of each level.
-          </Typography>
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 3, sm: 4 },
+          borderRadius: "16px",
+          border: "1px solid #e5e7eb",
+          mb: 3,
+        }}
+      >
+        <SectionHeader
+          icon={<Sliders size={22} weight="duotone" />}
+          title="Seniority Level"
+          subtitle="Filter jobs by experience level"
+          color="#10b981"
+        />
 
-          <Controller
-            name="seniority"
-            control={control}
-            render={({ field: { onChange, value } }) => (
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 1.5,
-                }}
-              >
-                {seniorityOptions.map((option) => (
+        <Controller
+          name="seniority"
+          control={control}
+          render={({ field: { onChange, value } }) => (
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5 }}>
+              {seniorityOptions.map((option) => {
+                const isSelected = value?.includes(option.value);
+                return (
                   <Chip
                     key={option.value}
                     label={option.label}
                     onClick={() => {
-                      const newValue = value?.includes(option.value)
+                      const newValue = isSelected
                         ? value.filter((v) => v !== option.value)
                         : [...(value || []), option.value];
                       onChange(newValue);
                     }}
                     sx={{
-                      padding: "10px 16px",
+                      padding: "8px 4px",
                       height: "auto",
-                      justifyContent: "flex-start",
-                      fontSize: { xs: "0.875rem", sm: "0.9375rem" },
+                      fontSize: "0.875rem",
                       fontWeight: 500,
-                      borderRadius: "12px",
+                      borderRadius: "20px",
                       cursor: "pointer",
-                      ...(value?.includes(option.value)
+                      transition: "all 0.2s ease",
+                      ...(isSelected
                         ? {
-                            backgroundColor: "#7c3aed",
+                            backgroundColor: "#10b981",
                             color: "white",
-                            "&:hover": {
-                              backgroundColor: "#6d28d9",
-                            },
+                            "&:hover": { backgroundColor: "#059669" },
                           }
                         : {
-                            backgroundColor: "transparent",
+                            backgroundColor: "#f9fafb",
                             color: "#374151",
                             border: "1px solid #e5e7eb",
-                            "&:hover": {
-                              backgroundColor: "#f3f4f6",
-                            },
+                            "&:hover": { backgroundColor: "#f3f4f6" },
                           }),
                     }}
                   />
-                ))}
-              </Box>
-            )}
-          />
-        </FormControl>
-      </Box>
+                );
+              })}
+            </Box>
+          )}
+        />
+      </Paper>
 
       {/* Time Zones Section */}
-      <Box sx={{ mb: 4 }}>
-        <FormControl fullWidth>
-          <FormLabel
-            sx={{
-              mb: 1.5,
-              fontWeight: 600,
-              fontSize: { xs: "0.875rem", sm: "0.9375rem" },
-              color: "#374151",
-            }}
-          >
-            Time Zones <span style={{ color: "#9ca3af", fontWeight: 400 }}>(optional)</span>
-          </FormLabel>
-          <Typography
-            variant="body2"
-            sx={{
-              mb: 2,
-              color: "#6b7280",
-              fontSize: { xs: "0.75rem", sm: "0.8125rem" },
-            }}
-          >
-            Filter remote jobs by time zone.
-          </Typography>
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 3, sm: 4 },
+          borderRadius: "16px",
+          border: "1px solid #e5e7eb",
+          mb: 3,
+        }}
+      >
+        <SectionHeader
+          icon={<Clock size={22} weight="duotone" />}
+          title="Time Zones"
+          subtitle="Filter remote jobs by time zone"
+          color="#f59e0b"
+        />
 
-          <Controller
-            name="timeZones"
-            control={control}
-            render={({ field: { onChange, value } }) => (
-              <Box>
-                <Autocomplete
-                  multiple
-                  options={timeZoneOptions}
-                  value={value || []}
-                  onChange={(_, newValue) => onChange(newValue)}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder="Select time zones"
+        <Controller
+          name="timeZones"
+          control={control}
+          render={({ field: { onChange, value } }) => (
+            <Box>
+              <Autocomplete
+                multiple
+                options={timeZoneOptions}
+                value={value || []}
+                onChange={(_, newValue) => onChange(newValue)}
+                size="small"
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Select time zones"
+                    sx={textFieldSx}
+                  />
+                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      label={option}
+                      {...getTagProps({ index })}
+                      key={option}
+                      size="small"
                       sx={{
-                        "& .MuiOutlinedInput-root": {
-                          borderRadius: "12px",
-                          fontSize: { xs: "0.875rem", sm: "0.9375rem" },
-                        },
+                        backgroundColor: "#fef3c7",
+                        color: "#b45309",
+                        fontWeight: 500,
                       }}
                     />
-                  )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        label={option}
-                        {...getTagProps({ index })}
-                        key={option}
+                  ))
+                }
+              />
+
+              <Controller
+                name="includeFlexibleTimeZone"
+                control={control}
+                render={({ field }) => (
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        {...field}
+                        checked={field.value}
                         size="small"
                         sx={{
-                          backgroundColor: "#dbeafe",
-                          color: "#1e40af",
-                          fontSize: { xs: "0.75rem", sm: "0.8125rem" },
+                          "& .MuiSwitch-switchBase.Mui-checked": {
+                            color: "#f59e0b",
+                          },
+                          "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                            backgroundColor: "#f59e0b",
+                          },
                         }}
                       />
-                    ))
-                  }
-                />
+                    }
+                    label="Include flexible time zone jobs"
+                    sx={{
+                      mt: 2,
+                      "& .MuiFormControlLabel-label": {
+                        fontSize: "0.8125rem",
+                        color: "#374151",
+                      },
+                    }}
+                  />
+                )}
+              />
 
-                <Controller
-                  name="includeFlexibleTimeZone"
-                  control={control}
-                  render={({ field }) => (
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          {...field}
-                          checked={field.value}
-                          size="small"
-                          sx={{
-                            "& .MuiSwitch-switchBase.Mui-checked": {
-                              color: "#7c3aed",
-                            },
-                            "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-                              backgroundColor: "#7c3aed",
-                            },
-                          }}
-                        />
-                      }
-                      label="Include jobs that are open to any time zone / flexible"
-                      sx={{
-                        mt: 1.5,
-                        "& .MuiFormControlLabel-label": {
-                          fontSize: { xs: "0.75rem", sm: "0.8125rem" },
-                          color: "#374151",
-                        },
-                      }}
-                    />
-                  )}
-                />
-
+              {value && value.length < 2 && (
                 <Box
                   sx={{
                     display: "flex",
@@ -414,395 +491,319 @@ export function CopilotStep2Form({ defaultValues, onNext, onBack }: CopilotStep2
                     mt: 2,
                     p: 1.5,
                     backgroundColor: "#fef3c7",
-                    borderRadius: "8px",
+                    borderRadius: "10px",
+                    border: "1px solid #fde68a",
                   }}
                 >
-                  <Typography sx={{ fontSize: "1rem" }}>⚠️</Typography>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      color: "#92400e",
-                      fontSize: { xs: "0.6875rem", sm: "0.75rem" },
-                    }}
-                  >
+                  <Warning size={18} weight="duotone" style={{ color: "#b45309" }} />
+                  <Typography sx={{ fontSize: "0.8125rem", color: "#92400e" }}>
                     Add at least 2 time zones to get more job results
                   </Typography>
                 </Box>
-              </Box>
-            )}
-          />
-        </FormControl>
-      </Box>
+              )}
+            </Box>
+          )}
+        />
+      </Paper>
 
-      {/* Advanced Filters Accordion */}
-      <Accordion
+      {/* Advanced Filters Section */}
+      <Paper
+        elevation={0}
         sx={{
-          mb: 5,
-          boxShadow: "none",
+          p: { xs: 3, sm: 4 },
+          borderRadius: "16px",
           border: "1px solid #e5e7eb",
-          borderRadius: "12px !important",
-          "&:before": {
-            display: "none",
-          },
+          mb: 4,
         }}
       >
-        <AccordionSummary
-          expandIcon={<CaretDown size={20} />}
+        <Box
+          onClick={() => setShowAdvanced(!showAdvanced)}
           sx={{
-            "& .MuiAccordionSummary-content": {
-              my: 2,
-            },
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            cursor: "pointer",
           }}
         >
-          <Typography
-            sx={{
-              fontWeight: 600,
-              fontSize: { xs: "0.9375rem", sm: "1rem" },
-              color: "#374151",
-            }}
-          >
-            Advanced Filters
-          </Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          {/* Industry */}
-          <FormControl fullWidth sx={{ mb: 3 }}>
-            <FormLabel
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Box
               sx={{
-                mb: 1.5,
-                fontWeight: 600,
-                fontSize: { xs: "0.875rem", sm: "0.9375rem" },
-                color: "#374151",
+                width: 40,
+                height: 40,
+                borderRadius: "12px",
+                background: "linear-gradient(135deg, #6366f120 0%, #6366f110 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#6366f1",
               }}
             >
-              Industry <span style={{ color: "#9ca3af", fontWeight: 400 }}>(optional)</span>
-            </FormLabel>
-            <Typography
-              variant="body2"
-              sx={{
-                mb: 1.5,
-                color: "#6b7280",
-                fontSize: { xs: "0.75rem", sm: "0.8125rem" },
-              }}
-            >
-              Select your preferred industries / sectors
-            </Typography>
+              <Funnel size={22} weight="duotone" />
+            </Box>
+            <Box>
+              <Typography sx={{ fontWeight: 700, fontSize: "1.125rem", color: "#1f2937" }}>
+                Advanced Filters
+              </Typography>
+              <Typography sx={{ fontSize: "0.875rem", color: "#6b7280" }}>
+                Industry, languages, keywords, and exclusions
+              </Typography>
+            </Box>
+          </Box>
+          {showAdvanced ? (
+            <CaretUp size={20} style={{ color: "#6b7280" }} />
+          ) : (
+            <CaretDown size={20} style={{ color: "#6b7280" }} />
+          )}
+        </Box>
 
-            <Controller
-              name="industries"
-              control={control}
-              render={({ field: { onChange, value } }) => (
-                <Autocomplete
-                  multiple
-                  options={industryOptions}
-                  value={value || []}
-                  onChange={(_, newValue) => onChange(newValue)}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder="Type or select"
-                      sx={{
-                        "& .MuiOutlinedInput-root": {
-                          borderRadius: "12px",
-                          fontSize: { xs: "0.875rem", sm: "0.9375rem" },
-                        },
-                      }}
+        <Collapse in={showAdvanced}>
+          <Box sx={{ mt: 3, pt: 3, borderTop: "1px solid #e5e7eb" }}>
+            <Grid container spacing={3}>
+              {/* Industry */}
+              <Grid size={12}>
+                <StyledLabel optional>Industry</StyledLabel>
+                <Controller
+                  name="industries"
+                  control={control}
+                  render={({ field: { onChange, value } }) => (
+                    <Autocomplete
+                      multiple
+                      options={industryOptions}
+                      value={value || []}
+                      onChange={(_, newValue) => onChange(newValue)}
+                      size="small"
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          placeholder="Select industries"
+                          sx={textFieldSx}
+                        />
+                      )}
+                      renderTags={(value, getTagProps) =>
+                        value.map((option, index) => (
+                          <Chip
+                            label={option}
+                            {...getTagProps({ index })}
+                            key={option}
+                            size="small"
+                            sx={{
+                              backgroundColor: "#ede9fe",
+                              color: "#6366f1",
+                              fontWeight: 500,
+                            }}
+                          />
+                        ))
+                      }
                     />
                   )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        label={option}
-                        {...getTagProps({ index })}
-                        key={option}
-                        size="small"
-                        sx={{
-                          backgroundColor: "#dbeafe",
-                          color: "#1e40af",
-                          fontSize: { xs: "0.75rem", sm: "0.8125rem" },
-                        }}
-                      />
-                    ))
-                  }
                 />
-              )}
-            />
-          </FormControl>
+              </Grid>
 
-          {/* Job Description Language */}
-          <FormControl fullWidth sx={{ mb: 3 }}>
-            <FormLabel
-              sx={{
-                mb: 1.5,
-                fontWeight: 600,
-                fontSize: { xs: "0.875rem", sm: "0.9375rem" },
-                color: "#374151",
-              }}
-            >
-              Job Description Language <span style={{ color: "#9ca3af", fontWeight: 400 }}>(optional)</span>
-            </FormLabel>
-            <Typography
-              variant="body2"
-              sx={{
-                mb: 1.5,
-                color: "#6b7280",
-                fontSize: { xs: "0.75rem", sm: "0.8125rem" },
-              }}
-            >
-              Only apply to jobs in the following languages:
-            </Typography>
-
-            <Controller
-              name="jobDescriptionLanguages"
-              control={control}
-              render={({ field: { onChange, value } }) => (
-                <Autocomplete
-                  multiple
-                  options={languageOptions}
-                  value={value || []}
-                  onChange={(_, newValue) => onChange(newValue)}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder="Select languages"
-                      sx={{
-                        "& .MuiOutlinedInput-root": {
-                          borderRadius: "12px",
-                          fontSize: { xs: "0.875rem", sm: "0.9375rem" },
-                        },
-                      }}
+              {/* Job Description Language */}
+              <Grid size={12}>
+                <StyledLabel optional>Job Description Language</StyledLabel>
+                <Controller
+                  name="jobDescriptionLanguages"
+                  control={control}
+                  render={({ field: { onChange, value } }) => (
+                    <Autocomplete
+                      multiple
+                      options={languageOptions}
+                      value={value || []}
+                      onChange={(_, newValue) => onChange(newValue)}
+                      size="small"
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          placeholder="Select languages"
+                          sx={textFieldSx}
+                        />
+                      )}
+                      renderTags={(value, getTagProps) =>
+                        value.map((option, index) => (
+                          <Chip
+                            label={option}
+                            {...getTagProps({ index })}
+                            key={option}
+                            size="small"
+                            sx={{
+                              backgroundColor: "#dbeafe",
+                              color: "#1e40af",
+                              fontWeight: 500,
+                            }}
+                          />
+                        ))
+                      }
                     />
                   )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        label={option}
-                        {...getTagProps({ index })}
-                        key={option}
-                        size="small"
-                        sx={{
-                          backgroundColor: "#dbeafe",
-                          color: "#1e40af",
-                          fontSize: { xs: "0.75rem", sm: "0.8125rem" },
-                        }}
-                      />
-                    ))
-                  }
                 />
-              )}
-            />
-          </FormControl>
+              </Grid>
 
-          {/* Job Description Keywords - Include */}
-          <FormControl fullWidth sx={{ mb: 3 }}>
-            <FormLabel
-              sx={{
-                mb: 1.5,
-                fontWeight: 600,
-                fontSize: { xs: "0.875rem", sm: "0.9375rem" },
-                color: "#374151",
-              }}
-            >
-              Job Description Keywords
-            </FormLabel>
-            <Typography
-              variant="body2"
-              sx={{
-                mb: 1,
-                color: "#7c3aed",
-                fontSize: { xs: "0.75rem", sm: "0.8125rem" },
-                fontWeight: 600,
-              }}
-            >
-              INCLUDE
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                mb: 1.5,
-                color: "#6b7280",
-                fontSize: { xs: "0.75rem", sm: "0.8125rem" },
-              }}
-            >
-              Only apply to jobs that include <strong>any</strong> of these keywords in the job description.
-            </Typography>
-
-            <Controller
-              name="includeKeywords"
-              control={control}
-              render={({ field: { onChange, value } }) => (
-                <Autocomplete
-                  multiple
-                  freeSolo
-                  options={[]}
-                  value={value || []}
-                  onChange={(_, newValue) => onChange(newValue)}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder="Type in keywords separated by commas"
-                      sx={{
-                        "& .MuiOutlinedInput-root": {
-                          borderRadius: "12px",
-                          fontSize: { xs: "0.875rem", sm: "0.9375rem" },
-                        },
-                      }}
+              {/* Include Keywords */}
+              <Grid size={12}>
+                <StyledLabel>
+                  Include Keywords{" "}
+                  <Chip
+                    label="INCLUDE"
+                    size="small"
+                    sx={{
+                      ml: 1,
+                      height: 20,
+                      fontSize: "0.65rem",
+                      backgroundColor: "#dcfce7",
+                      color: "#166534",
+                      fontWeight: 600,
+                    }}
+                  />
+                </StyledLabel>
+                <Typography sx={{ fontSize: "0.8125rem", color: "#6b7280", mb: 1.5 }}>
+                  Only apply to jobs containing <strong>any</strong> of these keywords
+                </Typography>
+                <Controller
+                  name="includeKeywords"
+                  control={control}
+                  render={({ field: { onChange, value } }) => (
+                    <Autocomplete
+                      multiple
+                      freeSolo
+                      options={[]}
+                      value={value || []}
+                      onChange={(_, newValue) => onChange(newValue)}
+                      size="small"
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          placeholder="Type keywords and press Enter"
+                          sx={textFieldSx}
+                        />
+                      )}
+                      renderTags={(value, getTagProps) =>
+                        value.map((option, index) => (
+                          <Chip
+                            label={option}
+                            {...getTagProps({ index })}
+                            key={option}
+                            size="small"
+                            sx={{
+                              backgroundColor: "#dcfce7",
+                              color: "#166534",
+                              fontWeight: 500,
+                            }}
+                          />
+                        ))
+                      }
                     />
                   )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        label={option}
-                        {...getTagProps({ index })}
-                        key={option}
-                        size="small"
-                        sx={{
-                          backgroundColor: "#dbeafe",
-                          color: "#1e40af",
-                          fontSize: { xs: "0.75rem", sm: "0.8125rem" },
-                        }}
-                      />
-                    ))
-                  }
                 />
-              )}
-            />
-          </FormControl>
+              </Grid>
 
-          {/* Job Description Keywords - Exclude */}
-          <FormControl fullWidth sx={{ mb: 3 }}>
-            <Typography
-              variant="body2"
-              sx={{
-                mb: 1,
-                color: "#ef4444",
-                fontSize: { xs: "0.75rem", sm: "0.8125rem" },
-                fontWeight: 600,
-              }}
-            >
-              EXCLUDE
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                mb: 1.5,
-                color: "#6b7280",
-                fontSize: { xs: "0.75rem", sm: "0.8125rem" },
-              }}
-            >
-              Exclude jobs that contain <strong>any</strong> of these keywords in the job description.
-            </Typography>
-
-            <Controller
-              name="excludeKeywords"
-              control={control}
-              render={({ field: { onChange, value } }) => (
-                <Autocomplete
-                  multiple
-                  freeSolo
-                  options={[]}
-                  value={value || []}
-                  onChange={(_, newValue) => onChange(newValue)}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder="Type in keywords separated by commas"
-                      sx={{
-                        "& .MuiOutlinedInput-root": {
-                          borderRadius: "12px",
-                          fontSize: { xs: "0.875rem", sm: "0.9375rem" },
-                        },
-                      }}
+              {/* Exclude Keywords */}
+              <Grid size={12}>
+                <StyledLabel>
+                  Exclude Keywords{" "}
+                  <Chip
+                    label="EXCLUDE"
+                    size="small"
+                    sx={{
+                      ml: 1,
+                      height: 20,
+                      fontSize: "0.65rem",
+                      backgroundColor: "#fee2e2",
+                      color: "#991b1b",
+                      fontWeight: 600,
+                    }}
+                  />
+                </StyledLabel>
+                <Typography sx={{ fontSize: "0.8125rem", color: "#6b7280", mb: 1.5 }}>
+                  Exclude jobs containing <strong>any</strong> of these keywords
+                </Typography>
+                <Controller
+                  name="excludeKeywords"
+                  control={control}
+                  render={({ field: { onChange, value } }) => (
+                    <Autocomplete
+                      multiple
+                      freeSolo
+                      options={[]}
+                      value={value || []}
+                      onChange={(_, newValue) => onChange(newValue)}
+                      size="small"
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          placeholder="Type keywords and press Enter"
+                          sx={textFieldSx}
+                        />
+                      )}
+                      renderTags={(value, getTagProps) =>
+                        value.map((option, index) => (
+                          <Chip
+                            label={option}
+                            {...getTagProps({ index })}
+                            key={option}
+                            size="small"
+                            sx={{
+                              backgroundColor: "#fee2e2",
+                              color: "#991b1b",
+                              fontWeight: 500,
+                            }}
+                          />
+                        ))
+                      }
                     />
                   )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        label={option}
-                        {...getTagProps({ index })}
-                        key={option}
-                        size="small"
-                        sx={{
-                          backgroundColor: "#fee2e2",
-                          color: "#991b1b",
-                          fontSize: { xs: "0.75rem", sm: "0.8125rem" },
-                        }}
-                      />
-                    ))
-                  }
                 />
-              )}
-            />
-          </FormControl>
+              </Grid>
 
-          {/* Exclude Companies */}
-          <FormControl fullWidth>
-            <FormLabel
-              sx={{
-                mb: 1.5,
-                fontWeight: 600,
-                fontSize: { xs: "0.875rem", sm: "0.9375rem" },
-                color: "#374151",
-              }}
-            >
-              Exclude Companies <span style={{ color: "#9ca3af", fontWeight: 400 }}>(optional)</span>
-            </FormLabel>
-            <Typography
-              variant="body2"
-              sx={{
-                mb: 1.5,
-                color: "#6b7280",
-                fontSize: { xs: "0.75rem", sm: "0.8125rem" },
-              }}
-            >
-              Select companies to exclude so that your copilot doesn't apply for any jobs at these companies.
-            </Typography>
-
-            <Controller
-              name="excludeCompanies"
-              control={control}
-              render={({ field: { onChange, value } }) => (
-                <Autocomplete
-                  multiple
-                  freeSolo
-                  options={[]}
-                  value={value || []}
-                  onChange={(_, newValue) => onChange(newValue)}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder="Type in and select companies to exclude"
-                      sx={{
-                        "& .MuiOutlinedInput-root": {
-                          borderRadius: "12px",
-                          fontSize: { xs: "0.875rem", sm: "0.9375rem" },
-                        },
-                      }}
+              {/* Exclude Companies */}
+              <Grid size={12}>
+                <StyledLabel optional>Exclude Companies</StyledLabel>
+                <Typography sx={{ fontSize: "0.8125rem", color: "#6b7280", mb: 1.5 }}>
+                  Your copilot won't apply to jobs at these companies
+                </Typography>
+                <Controller
+                  name="excludeCompanies"
+                  control={control}
+                  render={({ field: { onChange, value } }) => (
+                    <Autocomplete
+                      multiple
+                      freeSolo
+                      options={[]}
+                      value={value || []}
+                      onChange={(_, newValue) => onChange(newValue)}
+                      size="small"
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          placeholder="Type company names and press Enter"
+                          sx={textFieldSx}
+                        />
+                      )}
+                      renderTags={(value, getTagProps) =>
+                        value.map((option, index) => (
+                          <Chip
+                            label={option}
+                            {...getTagProps({ index })}
+                            key={option}
+                            size="small"
+                            sx={{
+                              backgroundColor: "#fee2e2",
+                              color: "#991b1b",
+                              fontWeight: 500,
+                            }}
+                          />
+                        ))
+                      }
                     />
                   )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        label={option}
-                        {...getTagProps({ index })}
-                        key={option}
-                        size="small"
-                        sx={{
-                          backgroundColor: "#fee2e2",
-                          color: "#991b1b",
-                          fontSize: { xs: "0.75rem", sm: "0.8125rem" },
-                        }}
-                      />
-                    ))
-                  }
                 />
-              )}
-            />
-          </FormControl>
-        </AccordionDetails>
-      </Accordion>
+              </Grid>
+            </Grid>
+          </Box>
+        </Collapse>
+      </Paper>
 
-      {/* Buttons */}
+      {/* Navigation Buttons */}
       <Box sx={{ display: "flex", gap: 2 }}>
         <Button
           type="button"
@@ -812,11 +813,12 @@ export function CopilotStep2Form({ defaultValues, onNext, onBack }: CopilotStep2
           startIcon={<ArrowLeft size={20} weight="bold" />}
           sx={{
             borderRadius: "12px",
-            padding: { xs: "12px 24px", sm: "14px 32px" },
+            py: 1.5,
+            px: 3,
             textTransform: "none",
-            fontSize: { xs: "0.9375rem", sm: "1rem" },
+            fontSize: "1rem",
             fontWeight: 600,
-            borderColor: "#e5e7eb",
+            border: "2px solid #e5e7eb",
             color: "#374151",
             "&:hover": {
               borderColor: "#d1d5db",
@@ -835,16 +837,18 @@ export function CopilotStep2Form({ defaultValues, onNext, onBack }: CopilotStep2
           endIcon={<ArrowRight size={20} weight="bold" />}
           sx={{
             borderRadius: "12px",
-            padding: { xs: "12px 24px", sm: "14px 32px" },
+            py: 1.5,
             textTransform: "none",
-            fontSize: { xs: "0.9375rem", sm: "1rem" },
+            fontSize: "1rem",
             fontWeight: 600,
             background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)",
-            boxShadow: "0 4px 12px rgba(124, 58, 237, 0.3)",
+            boxShadow: "0 4px 14px rgba(124, 58, 237, 0.35)",
             "&:hover": {
               background: "linear-gradient(135deg, #6d28d9 0%, #9333ea 100%)",
-              boxShadow: "0 6px 16px rgba(124, 58, 237, 0.4)",
+              boxShadow: "0 6px 20px rgba(124, 58, 237, 0.45)",
+              transform: "translateY(-1px)",
             },
+            transition: "all 0.2s ease",
           }}
         >
           Next: Profile Information

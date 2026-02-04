@@ -6,8 +6,6 @@ import {
   Box,
   TextField,
   Button,
-  FormControl,
-  FormLabel,
   Typography,
   Chip,
   Autocomplete,
@@ -16,37 +14,46 @@ import {
   Radio,
   RadioGroup,
   FormControlLabel,
+  Paper,
+  Grid,
+  FormHelperText,
 } from "@mui/material";
-import { 
-  ArrowRight, 
-  ArrowLeft,
-  UploadSimple,
-  X,
-  FilePdf,
-  FileDoc,
-  CheckCircle,
-  Plus,
-  Info
+import {
+  ArrowRightIcon as ArrowRight,
+  ArrowLeftIcon as ArrowLeft,
+  UploadSimpleIcon as UploadSimple,
+  XIcon as X,
+  FilePdfIcon as FilePdf,
+  FileDocIcon as FileDoc,
+  CheckCircleIcon as CheckCircle,
+  PlusIcon as Plus,
+  UserIcon as User,
+  MapPinIcon as MapPin,
+  BriefcaseIcon as Briefcase,
+  CurrencyDollarIcon as CurrencyDollar,
+  LinkedinLogoIcon as LinkedinLogo,
+  GlobeIcon as Globe,
+  FileTextIcon as FileText,
 } from "@phosphor-icons/react";
 import { Step3Data } from "@/context/copilot-form-context";
 
-// Zod validation schema
+// Zod validation schema - matches Step3Data interface
 const step3Schema = zod.object({
-  cvFile: zod.instanceof(File, { message: "Please upload your CV/Resume" }),
-  cvLink: zod.string().optional(),
+  cvLink: zod.string().min(1, { message: "Please upload your CV/Resume" }),
   phoneNumber: zod.string().optional(),
   coverLetter: zod.string().optional(),
-  coverLetterType: zod.enum(["generate", "upload"]).default("generate"),
   currentLocation: zod.string().min(1, { message: "Current location is required" }),
   stateRegion: zod.string().optional(),
   postCode: zod.string().optional(),
   currentJobTitle: zod.string().optional(),
   availability: zod.string().min(1, { message: "Please select your availability" }),
   eligibleCountries: zod.array(zod.string()),
-  requireSponsorship: zod.enum(["yes", "no"]).optional(),
+  futureLanguages: zod.array(zod.string()),
   nationality: zod.array(zod.string()),
   currentSalary: zod.string().optional(),
   expectedSalary: zod.string().optional(),
+  expectedSalaryFullTime: zod.string().optional(),
+  expectedSalaryPartTime: zod.string().optional(),
   linkedInProfile: zod.string().optional(),
   experienceSummary: zod.string().min(1, { message: "Experience summary is required" }),
   screeningQuestions: zod.string().optional(),
@@ -80,12 +87,114 @@ const countryOptions = [
   "Belgium",
 ];
 
+const languageOptions = [
+  "English",
+  "Spanish",
+  "French",
+  "German",
+  "Mandarin",
+  "Hindi",
+  "Portuguese",
+  "Japanese",
+];
+
+// Section Header Component
+const SectionHeader = ({
+  icon,
+  title,
+  subtitle,
+  color = "#7c3aed",
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle?: string;
+  color?: string;
+}) => (
+  <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, mb: 3 }}>
+    <Box
+      sx={{
+        width: 40,
+        height: 40,
+        borderRadius: "12px",
+        background: `linear-gradient(135deg, ${color}20 0%, ${color}10 100%)`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: color,
+        flexShrink: 0,
+      }}
+    >
+      {icon}
+    </Box>
+    <Box>
+      <Typography
+        variant="h6"
+        sx={{
+          fontWeight: 700,
+          color: "#1f2937",
+          fontSize: { xs: "1rem", sm: "1.125rem" },
+          lineHeight: 1.3,
+        }}
+      >
+        {title}
+      </Typography>
+      {subtitle && (
+        <Typography
+          variant="body2"
+          sx={{ color: "#6b7280", fontSize: "0.875rem", mt: 0.5 }}
+        >
+          {subtitle}
+        </Typography>
+      )}
+    </Box>
+  </Box>
+);
+
+// Form Label Component
+const StyledLabel = ({ children, required }: { children: React.ReactNode; required?: boolean }) => (
+  <Typography
+    sx={{
+      fontSize: "0.875rem",
+      fontWeight: 600,
+      color: "#374151",
+      mb: 1,
+      display: "block",
+    }}
+  >
+    {children}
+    {required && <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>}
+  </Typography>
+);
+
+// Text Field Styles
+const textFieldSx = {
+  "& .MuiOutlinedInput-root": {
+    borderRadius: "10px",
+    backgroundColor: "#f9fafb",
+    transition: "all 0.2s ease",
+    "& fieldset": {
+      borderColor: "#e5e7eb",
+    },
+    "&:hover fieldset": {
+      borderColor: "#d1d5db",
+    },
+    "&.Mui-focused": {
+      backgroundColor: "#fff",
+      "& fieldset": {
+        borderColor: "#7c3aed",
+        borderWidth: "2px",
+      },
+    },
+  },
+};
+
 export function CopilotStep3Form({ defaultValues, onNext, onBack }: CopilotStep3FormProps): React.JSX.Element {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
   const [fileError, setFileError] = React.useState<string>("");
   const [isUploading, setIsUploading] = React.useState(false);
   const [uploadSuccess, setUploadSuccess] = React.useState(false);
+  const [coverLetterType, setCoverLetterType] = React.useState<"generate" | "upload">("generate");
 
   const {
     control,
@@ -96,7 +205,7 @@ export function CopilotStep3Form({ defaultValues, onNext, onBack }: CopilotStep3
     trigger,
   } = useForm<Step3FormValues>({
     defaultValues: {
-      coverLetterType: "generate",
+      cvLink: defaultValues?.cvLink || "",
       phoneNumber: defaultValues?.phoneNumber || "",
       coverLetter: defaultValues?.coverLetter || "",
       currentLocation: defaultValues?.currentLocation || "",
@@ -105,10 +214,12 @@ export function CopilotStep3Form({ defaultValues, onNext, onBack }: CopilotStep3
       currentJobTitle: defaultValues?.currentJobTitle || "",
       availability: defaultValues?.availability || "",
       eligibleCountries: defaultValues?.eligibleCountries || [],
-      requireSponsorship: undefined,
+      futureLanguages: defaultValues?.futureLanguages || [],
       nationality: defaultValues?.nationality || [],
       currentSalary: defaultValues?.currentSalary || "",
       expectedSalary: defaultValues?.expectedSalary || "",
+      expectedSalaryFullTime: defaultValues?.expectedSalaryFullTime || "",
+      expectedSalaryPartTime: defaultValues?.expectedSalaryPartTime || "",
       linkedInProfile: defaultValues?.linkedInProfile || "",
       experienceSummary: defaultValues?.experienceSummary || "",
       screeningQuestions: defaultValues?.screeningQuestions || "",
@@ -116,34 +227,12 @@ export function CopilotStep3Form({ defaultValues, onNext, onBack }: CopilotStep3
     resolver: zodResolver(step3Schema),
   });
 
-  const coverLetterType = watch("coverLetterType");
   const experienceSummary = watch("experienceSummary");
 
   const uploadResumeToAPI = async (file: File): Promise<string> => {
-    const formData = new FormData();
-    formData.append('resume', file);
-
-    try {
-      // const response = await fetch('https://api.jobcopilot.com/api/v1/resumes', {
-      //   method: 'POST',
-      //   body: formData,
-      //   // Add authorization header if needed
-      //   // headers: {
-      //   //   'Authorization': `Bearer ${yourAuthToken}`,
-      //   // },
-      // });
-
-      // if (!response.ok) {
-      //   throw new Error(`Upload failed: ${response.statusText}`);
-      // }
-
-      // const data = await response.json();
-      // return data.url || data.resumeUrl || data.fileUrl || '';
-      return " "
-    } catch (error) {
-      console.error('Resume upload error:', error);
-      throw error;
-    }
+    // Simulated upload - replace with actual API call
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    return `https://storage.example.com/resumes/${file.name}`;
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -151,18 +240,18 @@ export function CopilotStep3Form({ defaultValues, onNext, onBack }: CopilotStep3
     if (!file) return;
 
     const validTypes = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ];
-    
+
     if (!validTypes.includes(file.type)) {
-      setFileError('Please upload a PDF or Word document');
+      setFileError("Please upload a PDF or Word document");
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      setFileError('File size must be less than 10MB');
+      setFileError("File size must be less than 10MB");
       return;
     }
 
@@ -173,14 +262,13 @@ export function CopilotStep3Form({ defaultValues, onNext, onBack }: CopilotStep3
 
     try {
       const resumeUrl = await uploadResumeToAPI(file);
-      setValue("cvFile", file);
       setValue("cvLink", resumeUrl);
       setUploadSuccess(true);
-      trigger("cvFile");
+      trigger("cvLink");
     } catch (error) {
-      setFileError('Failed to upload resume. Please try again.');
+      setFileError("Failed to upload resume. Please try again.");
       setUploadedFile(null);
-      setValue("cvFile", undefined);
+      setValue("cvLink", "");
     } finally {
       setIsUploading(false);
     }
@@ -189,672 +277,741 @@ export function CopilotStep3Form({ defaultValues, onNext, onBack }: CopilotStep3
   const handleRemoveFile = () => {
     setUploadedFile(null);
     setUploadSuccess(false);
-    setValue("cvFile", undefined);
     setValue("cvLink", "");
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
-  };
-
-  const triggerFileInput = () => {
-    fileInputRef.current?.click();
   };
 
   const getFileIcon = (fileName: string) => {
-    const extension = fileName.split('.').pop()?.toLowerCase();
-    if (extension === 'pdf') {
-      return <FilePdf size={24} weight="fill" style={{ color: "#ef4444" }} />;
+    const extension = fileName.split(".").pop()?.toLowerCase();
+    if (extension === "pdf") {
+      return <FilePdf size={24} weight="duotone" style={{ color: "#ef4444" }} />;
     }
-    return <FileDoc size={24} weight="fill" style={{ color: "#2563eb" }} />;
+    return <FileDoc size={24} weight="duotone" style={{ color: "#2563eb" }} />;
   };
 
   return (
-    <Box component="form" onSubmit={handleSubmit(onNext)} sx={{ width: "100%", maxWidth: "600px", mx: "auto" }}>
-      {/* CV/Resume Upload */}
-      <Box sx={{ mb: 4 }}>
-        <Typography sx={{ fontSize: "0.9375rem", fontWeight: 600, color: "#1f2937", mb: 1.5 }}>
-          Confirm the CV/Resume you would like to use
-        </Typography>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf,.doc,.docx"
-          onChange={handleFileUpload}
-          style={{ display: 'none' }}
-          disabled={isUploading}
-        />
-
-        {!uploadedFile ? (
-          <Button
-            variant="outlined"
-            onClick={triggerFileInput}
-            disabled={isUploading}
-            startIcon={isUploading ? <CircularProgress size={18} /> : <UploadSimple size={18} weight="bold" />}
-            sx={{
-              width: "100%",
-              justifyContent: "flex-start",
-              py: 1.25,
-              px: 2,
-              borderRadius: "8px",
-              border: "1px solid #d1d5db",
-              color: "#6b7280",
-              textTransform: "none",
-              fontSize: "0.9375rem",
-              fontWeight: 400,
-              "&:hover": {
-                borderColor: "#9ca3af",
-                backgroundColor: "transparent",
-              },
-            }}
-          >
-            {isUploading ? "Uploading..." : "Upload CV/PDF or Word"}
-          </Button>
-        ) : (
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1.5,
-              p: 1.5,
-              border: "1px solid #d1d5db",
-              borderRadius: "8px",
-              backgroundColor: "#f9fafb",
-            }}
-          >
-            {getFileIcon(uploadedFile.name)}
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography sx={{ fontSize: "0.875rem", fontWeight: 500, color: "#1f2937", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {uploadedFile.name}
-              </Typography>
-            </Box>
-            {uploadSuccess && <CheckCircle size={20} weight="fill" style={{ color: "#10b981" }} />}
-            <IconButton size="small" onClick={handleRemoveFile} sx={{ p: 0.5 }}>
-              <X size={18} />
-            </IconButton>
-          </Box>
-        )}
-        {(fileError || errors.cvFile) && (
-          <Typography sx={{ fontSize: "0.75rem", color: "#ef4444", mt: 0.5 }}>
-            {fileError || errors.cvFile?.message}
-          </Typography>
-        )}
-      </Box>
-
-      {/* Cover Letter */}
-      <Box sx={{ mb: 4 }}>
-        <Typography sx={{ fontSize: "0.9375rem", fontWeight: 600, color: "#1f2937", mb: 1.5 }}>
-          Cover Letter
-        </Typography>
-        <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-          <Button
-            variant={coverLetterType === "generate" ? "contained" : "outlined"}
-            onClick={() => setValue("coverLetterType", "generate")}
-            startIcon={<Plus size={18} weight="bold" />}
-            sx={{
-              flex: 1,
-              py: 1,
-              borderRadius: "8px",
-              textTransform: "none",
-              fontSize: "0.875rem",
-              fontWeight: 500,
-              ...(coverLetterType === "generate" ? {
-                background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)",
-                color: "white",
-                border: "none",
-                "&:hover": {
-                  background: "linear-gradient(135deg, #6d28d9 0%, #9333ea 100%)",
-                },
-              } : {
-                border: "1px solid #d1d5db",
-                color: "#374151",
-                "&:hover": {
-                  borderColor: "#9ca3af",
-                  backgroundColor: "transparent",
-                },
-              }),
-            }}
-          >
-            Generate a tailored cover letter
-          </Button>
-          <Button
-            variant={coverLetterType === "upload" ? "contained" : "outlined"}
-            onClick={() => setValue("coverLetterType", "upload")}
-            startIcon={<UploadSimple size={18} weight="bold" />}
-            sx={{
-              flex: 1,
-              py: 1,
-              borderRadius: "8px",
-              textTransform: "none",
-              fontSize: "0.875rem",
-              fontWeight: 500,
-              ...(coverLetterType === "upload" ? {
-                backgroundColor: "#f3f4f6",
-                color: "#1f2937",
-                border: "1px solid #d1d5db",
-                "&:hover": {
-                  backgroundColor: "#e5e7eb",
-                },
-              } : {
-                border: "1px solid #d1d5db",
-                color: "#374151",
-                "&:hover": {
-                  borderColor: "#9ca3af",
-                  backgroundColor: "transparent",
-                },
-              }),
-            }}
-          >
-            Upload my own Cover Letter
-          </Button>
-        </Box>
-      </Box>
-
-      {/* Phone Number */}
-      <Box sx={{ mb: 4 }}>
-        <Typography sx={{ fontSize: "0.9375rem", fontWeight: 600, color: "#1f2937", mb: 1.5 }}>
-          Please enter your mobile number for employers to contact you
-        </Typography>
-        <Controller
-          name="phoneNumber"
-          control={control}
-          render={({ field }) => (
-            <Box sx={{ display: "flex", gap: 1.5 }}>
-              <TextField
-                select
-                defaultValue="+91"
-                SelectProps={{ native: true }}
-                sx={{
-                  width: 100,
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: "8px",
-                    fontSize: "0.9375rem",
-                  },
-                }}
-              >
-                <option value="+91">🇮🇳 +91</option>
-                <option value="+1">🇺🇸 +1</option>
-                <option value="+44">🇬🇧 +44</option>
-              </TextField>
-              <TextField
-                {...field}
-                placeholder="9391754584"
-                variant="outlined"
-                fullWidth
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: "8px",
-                    fontSize: "0.9375rem",
-                  },
-                }}
-              />
-            </Box>
-          )}
-        />
-      </Box>
-
-      {/* Current Location */}
-      <Box sx={{ mb: 4 }}>
-        <Typography sx={{ fontSize: "0.9375rem", fontWeight: 600, color: "#1f2937", mb: 1.5 }}>
-          Where are you currently based?
-        </Typography>
-        <Box sx={{ display: "flex", gap: 1.5, mb: 1.5 }}>
-          <Controller
-            name="currentLocation"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                placeholder="Country"
-                variant="outlined"
-                fullWidth
-                error={Boolean(errors.currentLocation)}
-                sx={{
-                  flex: 1,
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: "8px",
-                    fontSize: "0.9375rem",
-                  },
-                }}
-              />
-            )}
-          />
-          <IconButton
-            sx={{
-              border: "1px solid #d1d5db",
-              borderRadius: "8px",
-              width: 42,
-              height: 42,
-            }}
-          >
-            <Info size={20} />
-          </IconButton>
-        </Box>
-        <Box sx={{ display: "flex", gap: 1.5 }}>
-          <Controller
-            name="stateRegion"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                placeholder="State of Region (Hyderabad, Telangana, etc.)"
-                variant="outlined"
-                fullWidth
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: "8px",
-                    fontSize: "0.9375rem",
-                  },
-                }}
-              />
-            )}
-          />
-          <Controller
-            name="postCode"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                placeholder="Post code"
-                variant="outlined"
-                sx={{
-                  width: 120,
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: "8px",
-                    fontSize: "0.9375rem",
-                  },
-                }}
-              />
-            )}
-          />
-        </Box>
-        {errors.currentLocation && (
-          <Typography sx={{ fontSize: "0.75rem", color: "#ef4444", mt: 0.5 }}>
-            {errors.currentLocation.message}
-          </Typography>
-        )}
-      </Box>
-
-      {/* Current Job Title */}
-      <Box sx={{ mb: 4 }}>
-        <Typography sx={{ fontSize: "0.9375rem", fontWeight: 600, color: "#1f2937", mb: 1.5 }}>
-          What is your current (or previous) job title?
-        </Typography>
-        <Controller
-          name="currentJobTitle"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              placeholder="<Not selected>"
-              variant="outlined"
-              fullWidth
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: "8px",
-                  fontSize: "0.9375rem",
-                },
-              }}
-            />
-          )}
-        />
-      </Box>
-
-      {/* Availability */}
-      <Box sx={{ mb: 4 }}>
-        <Typography sx={{ fontSize: "0.9375rem", fontWeight: 600, color: "#1f2937", mb: 1.5 }}>
-          What is your availability / notice period?
-        </Typography>
-        <Controller
-          name="availability"
-          control={control}
-          render={({ field }) => (
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5 }}>
-              {availabilityOptions.map((option) => (
-                <Chip
-                  key={option.value}
-                  label={option.label}
-                  onClick={() => field.onChange(option.value)}
-                  sx={{
-                    px: 1.5,
-                    py: 2.5,
-                    borderRadius: "20px",
-                    fontSize: "0.875rem",
-                    fontWeight: 500,
-                    cursor: "pointer",
-                    ...(field.value === option.value ? {
-                      backgroundColor: "#7c3aed",
-                      color: "white",
-                      "&:hover": {
-                        backgroundColor: "#6d28d9",
-                      },
-                    } : {
-                      backgroundColor: "transparent",
-                      border: "1px solid #d1d5db",
-                      color: "#374151",
-                      "&:hover": {
-                        backgroundColor: "#f3f4f6",
-                      },
-                    }),
-                  }}
-                />
-              ))}
-            </Box>
-          )}
-        />
-        {errors.availability && (
-          <Typography sx={{ fontSize: "0.75rem", color: "#ef4444", mt: 0.5 }}>
-            {errors.availability.message}
-          </Typography>
-        )}
-      </Box>
-
-      {/* Eligible Countries */}
-      <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
-          <Typography sx={{ fontSize: "0.9375rem", fontWeight: 600, color: "#1f2937" }}>
-            In which countries are you eligible to work in?
-          </Typography>
-          <IconButton size="small" sx={{ p: 0 }}>
-            <Info size={16} color="#9ca3af" />
-          </IconButton>
-        </Box>
-        <Typography sx={{ fontSize: "0.8125rem", color: "#6b7280", mb: 2 }}>
-          You can select multiple countries you have the legal right to work in
-        </Typography>
-        <Controller
-          name="eligibleCountries"
-          control={control}
-          render={({ field: { onChange, value } }) => (
-            <Autocomplete
-              multiple
-              options={countryOptions}
-              value={value || []}
-              onChange={(_, newValue) => onChange(newValue)}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  placeholder="Select countries"
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: "8px",
-                      fontSize: "0.9375rem",
-                    },
-                  }}
-                />
-              )}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip
-                    label={option}
-                    {...getTagProps({ index })}
-                    key={option}
-                    size="small"
-                    deleteIcon={<X size={14} weight="bold" />}
-                    sx={{
-                      backgroundColor: "#dbeafe",
-                      color: "#1e40af",
-                      fontSize: "0.8125rem",
-                      fontWeight: 500,
-                      borderRadius: "12px",
-                      "& .MuiChip-deleteIcon": {
-                        color: "#1e40af",
-                      },
-                    }}
-                  />
-                ))
-              }
-            />
-          )}
-        />
-      </Box>
-
-      {/* Sponsorship */}
-      <Box sx={{ mb: 4 }}>
-        <Typography sx={{ fontSize: "0.9375rem", fontWeight: 600, color: "#1f2937", mb: 1.5 }}>
-          Will you now or in the future require sponsorship for an employment visa?
-        </Typography>
-        <Controller
-          name="requireSponsorship"
-          control={control}
-          render={({ field }) => (
-            <RadioGroup {...field} row>
-              <FormControlLabel
-                value="yes"
-                control={<Radio sx={{ color: "#7c3aed", "&.Mui-checked": { color: "#7c3aed" } }} />}
-                label="Yes"
-                sx={{ mr: 4 }}
-              />
-              <FormControlLabel
-                value="no"
-                control={<Radio sx={{ color: "#7c3aed", "&.Mui-checked": { color: "#7c3aed" } }} />}
-                label="No"
-              />
-            </RadioGroup>
-          )}
-        />
-      </Box>
-
-      {/* Nationality */}
-      <Box sx={{ mb: 4 }}>
-        <Typography sx={{ fontSize: "0.9375rem", fontWeight: 600, color: "#1f2937", mb: 1.5 }}>
-          What is your nationality?
-        </Typography>
-        <Typography sx={{ fontSize: "0.8125rem", color: "#6b7280", mb: 2 }}>
-          You can select up to 3
-        </Typography>
-        <Controller
-          name="nationality"
-          control={control}
-          render={({ field: { onChange, value } }) => (
-            <Autocomplete
-              multiple
-              options={countryOptions}
-              value={value || []}
-              onChange={(_, newValue) => onChange(newValue.slice(0, 3))}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  placeholder="Select"
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: "8px",
-                      fontSize: "0.9375rem",
-                    },
-                  }}
-                />
-              )}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip
-                    label={option}
-                    {...getTagProps({ index })}
-                    key={option}
-                    size="small"
-                    deleteIcon={<X size={14} weight="bold" />}
-                    sx={{
-                      backgroundColor: "#dbeafe",
-                      color: "#1e40af",
-                      fontSize: "0.8125rem",
-                      fontWeight: 500,
-                      borderRadius: "12px",
-                      "& .MuiChip-deleteIcon": {
-                        color: "#1e40af",
-                      },
-                    }}
-                  />
-                ))
-              }
-            />
-          )}
-        />
-      </Box>
-
-      {/* Salary */}
-      <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
-          <Typography sx={{ fontSize: "0.9375rem", fontWeight: 600, color: "#1f2937" }}>
-            What is your current (or previous) <span style={{ fontStyle: "italic" }}>yearly</span> salary?
-          </Typography>
-          <IconButton size="small" sx={{ p: 0 }}>
-            <Info size={16} color="#9ca3af" />
-          </IconButton>
-        </Box>
-        <Controller
-          name="currentSalary"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              placeholder="$"
-              variant="outlined"
-              fullWidth
-              sx={{
-                mb: 2,
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: "8px",
-                  fontSize: "0.9375rem",
-                },
-              }}
-            />
-          )}
-        />
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
-          <Typography sx={{ fontSize: "0.9375rem", fontWeight: 600, color: "#1f2937" }}>
-            What is your expected <span style={{ fontStyle: "italic" }}>yearly</span> salary for a fulltime position?
-          </Typography>
-          <IconButton size="small" sx={{ p: 0 }}>
-            <Info size={16} color="#9ca3af" />
-          </IconButton>
-        </Box>
-        <Controller
-          name="expectedSalary"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              placeholder="$"
-              variant="outlined"
-              fullWidth
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: "8px",
-                  fontSize: "0.9375rem",
-                },
-              }}
-            />
-          )}
-        />
-      </Box>
-
-      {/* LinkedIn */}
-      <Box sx={{ mb: 4 }}>
-        <Typography sx={{ fontSize: "0.9375rem", fontWeight: 600, color: "#1f2937", mb: 1.5 }}>
-          Enter your LinkedIn profile link
-        </Typography>
-        <Controller
-          name="linkedInProfile"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              placeholder="https://linkedin.com"
-              variant="outlined"
-              fullWidth
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: "8px",
-                  fontSize: "0.9375rem",
-                },
-              }}
-            />
-          )}
-        />
-        <Button
-          variant="text"
+    <Box
+      component="form"
+      onSubmit={handleSubmit(onNext)}
+      sx={{ width: "100%", maxWidth: 700, mx: "auto" }}
+    >
+      {/* Page Title - Hidden on mobile */}
+      <Box sx={{ display: { xs: "none", sm: "block" }, mb: 4, textAlign: "center" }}>
+        <Typography
+          variant="h5"
           sx={{
-            color: "#7c3aed",
-            textTransform: "none",
-            fontSize: "0.875rem",
-            fontWeight: 500,
-            mt: 0.5,
-            p: 0,
-            minWidth: "auto",
-            "&:hover": {
-              backgroundColor: "transparent",
-              textDecoration: "underline",
-            },
+            fontWeight: 700,
+            fontSize: { sm: "1.25rem", md: "1.5rem" },
+            color: "#111827",
+            mb: 1,
           }}
         >
-          + I don't use linkedin
-        </Button>
+          Your Profile Information
+        </Typography>
+        <Typography
+          variant="body2"
+          sx={{ color: "#6b7280", fontSize: "0.9375rem" }}
+        >
+          Help employers learn more about you
+        </Typography>
       </Box>
 
-      {/* Experience Summary */}
-      <Box sx={{ mb: 4 }}>
-        <Typography sx={{ fontSize: "0.9375rem", fontWeight: 600, color: "#1f2937", mb: 1.5 }}>
-          Experience Summary
-        </Typography>
-        <Controller
-          name="experienceSummary"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              placeholder="Brief summary of your professional experience, skills, and relevant information about yourself. Background: technology. Experience in data apps applications like in client development etc. Well experienced with AWS, development in various cloud platforms, expert in Data architecture etc. Experienced in using tools like MS Word, MS Excel. Experienced in using tools..."
-              variant="outlined"
-              fullWidth
-              multiline
-              rows={5}
-              error={Boolean(errors.experienceSummary)}
-              helperText={errors.experienceSummary?.message}
+      {/* Resume Section */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 3, sm: 4 },
+          borderRadius: "16px",
+          border: "1px solid #e5e7eb",
+          mb: 3,
+        }}
+      >
+        <SectionHeader
+          icon={<FileText size={22} weight="duotone" />}
+          title="Resume & Cover Letter"
+          subtitle="Upload your CV and choose cover letter option"
+          color="#7c3aed"
+        />
+
+        {/* CV Upload */}
+        <Box sx={{ mb: 3 }}>
+          <StyledLabel required>CV / Resume</StyledLabel>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.doc,.docx"
+            onChange={handleFileUpload}
+            style={{ display: "none" }}
+            disabled={isUploading}
+          />
+
+          {!uploadedFile ? (
+            <Box
+              onClick={() => fileInputRef.current?.click()}
               sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: "8px",
-                  fontSize: "0.875rem",
+                p: 3,
+                border: "2px dashed #d1d5db",
+                borderRadius: "12px",
+                textAlign: "center",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                "&:hover": {
+                  borderColor: "#7c3aed",
+                  backgroundColor: "#f5f3ff",
                 },
               }}
-            />
+            >
+              {isUploading ? (
+                <CircularProgress size={24} sx={{ color: "#7c3aed" }} />
+              ) : (
+                <>
+                  <UploadSimple size={32} weight="duotone" style={{ color: "#7c3aed", marginBottom: 8 }} />
+                  <Typography sx={{ fontWeight: 500, color: "#374151", mb: 0.5 }}>
+                    Click to upload your CV
+                  </Typography>
+                  <Typography sx={{ fontSize: "0.8125rem", color: "#6b7280" }}>
+                    PDF or Word document (max 10MB)
+                  </Typography>
+                </>
+              )}
+            </Box>
+          ) : (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 2,
+                p: 2,
+                border: "1px solid #d1d5db",
+                borderRadius: "12px",
+                backgroundColor: "#f9fafb",
+              }}
+            >
+              {getFileIcon(uploadedFile.name)}
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography
+                  sx={{
+                    fontSize: "0.875rem",
+                    fontWeight: 500,
+                    color: "#1f2937",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {uploadedFile.name}
+                </Typography>
+                <Typography sx={{ fontSize: "0.75rem", color: "#6b7280" }}>
+                  {(uploadedFile.size / 1024).toFixed(1)} KB
+                </Typography>
+              </Box>
+              {uploadSuccess && (
+                <CheckCircle size={20} weight="fill" style={{ color: "#10b981" }} />
+              )}
+              <IconButton size="small" onClick={handleRemoveFile} sx={{ p: 0.5 }}>
+                <X size={18} />
+              </IconButton>
+            </Box>
           )}
-        />
-        <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 0.5 }}>
-          <Typography sx={{ fontSize: "0.75rem", color: "#9ca3af" }}>
-            {experienceSummary?.length || 0}/500
-          </Typography>
+          {(fileError || errors.cvLink) && (
+            <FormHelperText error sx={{ mt: 0.5 }}>
+              {fileError || errors.cvLink?.message}
+            </FormHelperText>
+          )}
         </Box>
-      </Box>
 
-      {/* Additional Screening Questions */}
-      <Box sx={{ mb: 5 }}>
-        <Typography sx={{ fontSize: "0.9375rem", fontWeight: 600, color: "#1f2937", mb: 1.5 }}>
-          Additional Screening Questions
-        </Typography>
-        <Typography sx={{ fontSize: "0.8125rem", color: "#6b7280", mb: 2 }}>
-          Add any other relevant context that would help answer employer questions or anything additional relevant information that can help your applications to be more complete
-        </Typography>
-        <Controller
-          name="screeningQuestions"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              placeholder=""
-              variant="outlined"
-              fullWidth
-              multiline
-              rows={4}
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: "8px",
-                  fontSize: "0.875rem",
-                },
-              }}
-            />
-          )}
+        {/* Cover Letter */}
+        <Box>
+          <StyledLabel>Cover Letter</StyledLabel>
+          <Grid container spacing={2}>
+            {[
+              { value: "generate", label: "Generate tailored", icon: <Plus size={18} /> },
+              { value: "upload", label: "Upload my own", icon: <UploadSimple size={18} /> },
+            ].map((option) => (
+              <Grid size={{ xs: 12, sm: 6 }} key={option.value}>
+                <Box
+                  onClick={() => setCoverLetterType(option.value as "generate" | "upload")}
+                  sx={{
+                    p: 2,
+                    borderRadius: "10px",
+                    border: "2px solid",
+                    borderColor: coverLetterType === option.value ? "#7c3aed" : "#e5e7eb",
+                    backgroundColor: coverLetterType === option.value ? "#f5f3ff" : "#fff",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1.5,
+                    transition: "all 0.2s ease",
+                    "&:hover": {
+                      borderColor: coverLetterType === option.value ? "#7c3aed" : "#d1d5db",
+                    },
+                  }}
+                >
+                  <Box
+                    sx={{
+                      color: coverLetterType === option.value ? "#7c3aed" : "#6b7280",
+                    }}
+                  >
+                    {option.icon}
+                  </Box>
+                  <Typography
+                    sx={{
+                      fontWeight: 500,
+                      fontSize: "0.875rem",
+                      color: coverLetterType === option.value ? "#7c3aed" : "#374151",
+                    }}
+                  >
+                    {option.label}
+                  </Typography>
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      </Paper>
+
+      {/* Contact & Location Section */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 3, sm: 4 },
+          borderRadius: "16px",
+          border: "1px solid #e5e7eb",
+          mb: 3,
+        }}
+      >
+        <SectionHeader
+          icon={<MapPin size={22} weight="duotone" />}
+          title="Contact & Location"
+          subtitle="Your contact details and current location"
+          color="#10b981"
         />
-      </Box>
 
-      {/* Buttons */}
+        <Grid container spacing={3}>
+          {/* Phone Number */}
+          <Grid size={12}>
+            <StyledLabel>Phone Number</StyledLabel>
+            <Controller
+              name="phoneNumber"
+              control={control}
+              render={({ field }) => (
+                <Box sx={{ display: "flex", gap: 1.5 }}>
+                  <TextField
+                    select
+                    defaultValue="+1"
+                    slotProps={{ select: { native: true } }}
+                    size="small"
+                    sx={{
+                      width: 100,
+                      ...textFieldSx,
+                    }}
+                  >
+                    <option value="+1">+1</option>
+                    <option value="+44">+44</option>
+                    <option value="+91">+91</option>
+                    <option value="+49">+49</option>
+                  </TextField>
+                  <TextField
+                    {...field}
+                    placeholder="Enter phone number"
+                    variant="outlined"
+                    fullWidth
+                    size="small"
+                    sx={textFieldSx}
+                  />
+                </Box>
+              )}
+            />
+          </Grid>
+
+          {/* Current Location */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <StyledLabel required>Country</StyledLabel>
+            <Controller
+              name="currentLocation"
+              control={control}
+              render={({ field: { onChange, value } }) => (
+                <Autocomplete
+                  options={countryOptions}
+                  value={value || null}
+                  onChange={(_, newValue) => onChange(newValue || "")}
+                  size="small"
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Select country"
+                      error={Boolean(errors.currentLocation)}
+                      helperText={errors.currentLocation?.message}
+                      sx={textFieldSx}
+                    />
+                  )}
+                />
+              )}
+            />
+          </Grid>
+
+          {/* State/Region */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <StyledLabel>State / Region</StyledLabel>
+            <Controller
+              name="stateRegion"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  placeholder="e.g. California"
+                  variant="outlined"
+                  fullWidth
+                  size="small"
+                  sx={textFieldSx}
+                />
+              )}
+            />
+          </Grid>
+
+          {/* Post Code */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <StyledLabel>Post Code</StyledLabel>
+            <Controller
+              name="postCode"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  placeholder="e.g. 90210"
+                  variant="outlined"
+                  fullWidth
+                  size="small"
+                  sx={textFieldSx}
+                />
+              )}
+            />
+          </Grid>
+
+          {/* LinkedIn */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <StyledLabel>LinkedIn Profile</StyledLabel>
+            <Controller
+              name="linkedInProfile"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  placeholder="https://linkedin.com/in/..."
+                  variant="outlined"
+                  fullWidth
+                  size="small"
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <LinkedinLogo size={18} style={{ marginRight: 8, color: "#0a66c2" }} />
+                      ),
+                    },
+                  }}
+                  sx={textFieldSx}
+                />
+              )}
+            />
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Work Eligibility Section */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 3, sm: 4 },
+          borderRadius: "16px",
+          border: "1px solid #e5e7eb",
+          mb: 3,
+        }}
+      >
+        <SectionHeader
+          icon={<Globe size={22} weight="duotone" />}
+          title="Work Eligibility"
+          subtitle="Countries where you can legally work"
+          color="#f59e0b"
+        />
+
+        <Grid container spacing={3}>
+          {/* Eligible Countries */}
+          <Grid size={12}>
+            <StyledLabel>Countries you're eligible to work in</StyledLabel>
+            <Controller
+              name="eligibleCountries"
+              control={control}
+              render={({ field: { onChange, value } }) => (
+                <Autocomplete
+                  multiple
+                  options={countryOptions}
+                  value={value || []}
+                  onChange={(_, newValue) => onChange(newValue)}
+                  size="small"
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Select countries"
+                      sx={textFieldSx}
+                    />
+                  )}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip
+                        label={option}
+                        {...getTagProps({ index })}
+                        key={option}
+                        size="small"
+                        sx={{
+                          backgroundColor: "#fef3c7",
+                          color: "#b45309",
+                          fontWeight: 500,
+                          "& .MuiChip-deleteIcon": {
+                            color: "#b45309",
+                            "&:hover": { color: "#92400e" },
+                          },
+                        }}
+                      />
+                    ))
+                  }
+                />
+              )}
+            />
+          </Grid>
+
+          {/* Nationality */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <StyledLabel>Nationality (up to 3)</StyledLabel>
+            <Controller
+              name="nationality"
+              control={control}
+              render={({ field: { onChange, value } }) => (
+                <Autocomplete
+                  multiple
+                  options={countryOptions}
+                  value={value || []}
+                  onChange={(_, newValue) => onChange(newValue.slice(0, 3))}
+                  size="small"
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Select nationality"
+                      sx={textFieldSx}
+                    />
+                  )}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip
+                        label={option}
+                        {...getTagProps({ index })}
+                        key={option}
+                        size="small"
+                        sx={{
+                          backgroundColor: "#ede9fe",
+                          color: "#7c3aed",
+                          fontWeight: 500,
+                        }}
+                      />
+                    ))
+                  }
+                />
+              )}
+            />
+          </Grid>
+
+          {/* Languages */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <StyledLabel>Languages</StyledLabel>
+            <Controller
+              name="futureLanguages"
+              control={control}
+              render={({ field: { onChange, value } }) => (
+                <Autocomplete
+                  multiple
+                  options={languageOptions}
+                  value={value || []}
+                  onChange={(_, newValue) => onChange(newValue)}
+                  size="small"
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Select languages"
+                      sx={textFieldSx}
+                    />
+                  )}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip
+                        label={option}
+                        {...getTagProps({ index })}
+                        key={option}
+                        size="small"
+                        sx={{
+                          backgroundColor: "#dbeafe",
+                          color: "#1e40af",
+                          fontWeight: 500,
+                        }}
+                      />
+                    ))
+                  }
+                />
+              )}
+            />
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Professional Info Section */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 3, sm: 4 },
+          borderRadius: "16px",
+          border: "1px solid #e5e7eb",
+          mb: 3,
+        }}
+      >
+        <SectionHeader
+          icon={<Briefcase size={22} weight="duotone" />}
+          title="Professional Information"
+          subtitle="Your current role and availability"
+          color="#6366f1"
+        />
+
+        <Grid container spacing={3}>
+          {/* Current Job Title */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <StyledLabel>Current / Previous Job Title</StyledLabel>
+            <Controller
+              name="currentJobTitle"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  placeholder="e.g. Software Engineer"
+                  variant="outlined"
+                  fullWidth
+                  size="small"
+                  sx={textFieldSx}
+                />
+              )}
+            />
+          </Grid>
+
+          {/* Availability */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <StyledLabel required>Availability / Notice Period</StyledLabel>
+            <Controller
+              name="availability"
+              control={control}
+              render={({ field }) => (
+                <Box>
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                    {availabilityOptions.map((option) => {
+                      const isSelected = field.value === option.value;
+                      return (
+                        <Chip
+                          key={option.value}
+                          label={option.label}
+                          onClick={() => field.onChange(option.value)}
+                          sx={{
+                            borderRadius: "16px",
+                            fontSize: "0.8125rem",
+                            fontWeight: 500,
+                            cursor: "pointer",
+                            transition: "all 0.2s ease",
+                            ...(isSelected
+                              ? {
+                                  backgroundColor: "#6366f1",
+                                  color: "white",
+                                  "&:hover": { backgroundColor: "#4f46e5" },
+                                }
+                              : {
+                                  backgroundColor: "#f9fafb",
+                                  color: "#374151",
+                                  border: "1px solid #e5e7eb",
+                                  "&:hover": { backgroundColor: "#f3f4f6" },
+                                }),
+                          }}
+                        />
+                      );
+                    })}
+                  </Box>
+                  {errors.availability && (
+                    <FormHelperText error sx={{ mt: 0.5 }}>
+                      {errors.availability.message}
+                    </FormHelperText>
+                  )}
+                </Box>
+              )}
+            />
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Salary Section */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 3, sm: 4 },
+          borderRadius: "16px",
+          border: "1px solid #e5e7eb",
+          mb: 3,
+        }}
+      >
+        <SectionHeader
+          icon={<CurrencyDollar size={22} weight="duotone" />}
+          title="Salary Information"
+          subtitle="Your current and expected compensation"
+          color="#10b981"
+        />
+
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <StyledLabel>Current Yearly Salary</StyledLabel>
+            <Controller
+              name="currentSalary"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  placeholder="e.g. $80,000"
+                  variant="outlined"
+                  fullWidth
+                  size="small"
+                  sx={textFieldSx}
+                />
+              )}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <StyledLabel>Expected Yearly Salary</StyledLabel>
+            <Controller
+              name="expectedSalary"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  placeholder="e.g. $100,000"
+                  variant="outlined"
+                  fullWidth
+                  size="small"
+                  sx={textFieldSx}
+                />
+              )}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <StyledLabel>Expected Salary (Full-time)</StyledLabel>
+            <Controller
+              name="expectedSalaryFullTime"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  placeholder="e.g. $100,000"
+                  variant="outlined"
+                  fullWidth
+                  size="small"
+                  sx={textFieldSx}
+                />
+              )}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <StyledLabel>Expected Salary (Part-time)</StyledLabel>
+            <Controller
+              name="expectedSalaryPartTime"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  placeholder="e.g. $50/hour"
+                  variant="outlined"
+                  fullWidth
+                  size="small"
+                  sx={textFieldSx}
+                />
+              )}
+            />
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Experience Summary Section */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 3, sm: 4 },
+          borderRadius: "16px",
+          border: "1px solid #e5e7eb",
+          mb: 4,
+        }}
+      >
+        <SectionHeader
+          icon={<User size={22} weight="duotone" />}
+          title="About You"
+          subtitle="Tell employers about your experience"
+          color="#8b5cf6"
+        />
+
+        {/* Experience Summary */}
+        <Box sx={{ mb: 3 }}>
+          <StyledLabel required>Experience Summary</StyledLabel>
+          <Controller
+            name="experienceSummary"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                placeholder="Brief summary of your professional experience, skills, and achievements..."
+                variant="outlined"
+                fullWidth
+                multiline
+                rows={4}
+                error={Boolean(errors.experienceSummary)}
+                helperText={errors.experienceSummary?.message}
+                sx={textFieldSx}
+              />
+            )}
+          />
+          <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 0.5 }}>
+            <Typography sx={{ fontSize: "0.75rem", color: "#9ca3af" }}>
+              {experienceSummary?.length || 0}/500
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* Additional Screening Questions */}
+        <Box>
+          <StyledLabel>Additional Information</StyledLabel>
+          <Typography sx={{ fontSize: "0.8125rem", color: "#6b7280", mb: 1.5 }}>
+            Any other relevant context to help answer employer questions
+          </Typography>
+          <Controller
+            name="screeningQuestions"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                placeholder="e.g. Certifications, special skills, or preferences..."
+                variant="outlined"
+                fullWidth
+                multiline
+                rows={3}
+                sx={textFieldSx}
+              />
+            )}
+          />
+        </Box>
+      </Paper>
+
+      {/* Navigation Buttons */}
       <Box sx={{ display: "flex", gap: 2 }}>
         <Button
           type="button"
@@ -864,17 +1021,17 @@ export function CopilotStep3Form({ defaultValues, onNext, onBack }: CopilotStep3
           disabled={isUploading}
           startIcon={<ArrowLeft size={20} weight="bold" />}
           sx={{
-            borderRadius: "8px",
+            borderRadius: "12px",
             py: 1.5,
             px: 3,
             textTransform: "none",
-            fontSize: "0.9375rem",
+            fontSize: "1rem",
             fontWeight: 600,
-            border: "1px solid #d1d5db",
+            border: "2px solid #e5e7eb",
             color: "#374151",
             "&:hover": {
-              borderColor: "#9ca3af",
-              backgroundColor: "transparent",
+              borderColor: "#d1d5db",
+              backgroundColor: "#f9fafb",
             },
           }}
         >
@@ -889,26 +1046,29 @@ export function CopilotStep3Form({ defaultValues, onNext, onBack }: CopilotStep3
           disabled={isUploading}
           endIcon={<ArrowRight size={20} weight="bold" />}
           sx={{
-            borderRadius: "8px",
+            borderRadius: "12px",
             py: 1.5,
-            px: 3,
             textTransform: "none",
-            fontSize: "0.9375rem",
+            fontSize: "1rem",
             fontWeight: 600,
             background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)",
-            boxShadow: "none",
+            boxShadow: "0 4px 14px rgba(124, 58, 237, 0.35)",
             "&:hover": {
               background: "linear-gradient(135deg, #6d28d9 0%, #9333ea 100%)",
+              boxShadow: "0 6px 20px rgba(124, 58, 237, 0.45)",
+              transform: "translateY(-1px)",
+            },
+            "&:disabled": {
+              background: "#e5e7eb",
+              color: "#9ca3af",
               boxShadow: "none",
-              },
-        "&:disabled": {
-          background: "#d1d5db",
-        },
-      }}
-    >
-      Next: Field Configuration
-    </Button>
-  </Box>
-</Box>
-  )
+            },
+            transition: "all 0.2s ease",
+          }}
+        >
+          Next: Configuration
+        </Button>
+      </Box>
+    </Box>
+  );
 }

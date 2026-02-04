@@ -11,15 +11,16 @@ export interface AppProps {
 const App = ({ children }: AppProps) => {
   return (
     <AuthProvider>
-      <div className="min-h-screen flex flex-col bg-gray-50">
+      <div className="flex min-h-screen flex-col bg-gray-50">
+        {/* Header */}
         <Header />
 
-        {/* Main content */}
-        <main className="flex-1 overflow-y-auto">
+        {/* Main Content */}
+        <main className="flex-1">
           {children}
         </main>
 
-        {/* Toast Portal */}
+        {/* Toast Notifications */}
         <Toaster position="bottom-right" />
       </div>
     </AuthProvider>

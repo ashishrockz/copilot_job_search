@@ -6,27 +6,49 @@ import {
   Box,
   TextField,
   Button,
-  FormControl,
   FormLabel,
   Typography,
   Chip,
   Autocomplete,
-  ToggleButton,
-  ToggleButtonGroup,
   FormHelperText,
+  Paper,
+  Grid,
 } from "@mui/material";
-import { MapPin, ArrowRight, Briefcase, MagnifyingGlass } from "@phosphor-icons/react";
+import {
+  MapPinIcon as MapPin,
+  ArrowRightIcon as ArrowRight,
+  BriefcaseIcon as Briefcase,
+  MagnifyingGlassIcon as MagnifyingGlass,
+  GlobeIcon as Globe,
+  BuildingsIcon as Buildings,
+  LightbulbIcon as Lightbulb,
+  BookmarkSimpleIcon as BookmarkSimple,
+  ClockCounterClockwiseIcon as ClockCounterClockwise,
+} from "@phosphor-icons/react";
 import { Step1Data } from "@/context/copilot-form-context";
 
 // Zod validation schema
 const step1Schema = zod.object({
-  workLocationType: zod.enum(["remote", "onsite", "hybrid"], { message: "Please select a work location type" }),
+  workLocationType: zod.enum(["remote", "onsite", "hybrid"], {
+    message: "Please select a work location type",
+  }),
   remoteLocations: zod.array(zod.string()).optional(),
   onsiteLocations: zod.array(zod.string()).optional(),
   jobTypes: zod.array(zod.string()).min(1, { message: "Select at least one job type" }),
   searchMethod: zod.enum(["keywords", "favorite", "applied"]),
-  // jobTitles: zod.array(zod.string()).min(1, { message: "Add at least one job title" }),
-});
+  jobTitles: zod.array(zod.string()).optional(),
+}).refine(
+  (data) => {
+    if (data.searchMethod === "keywords") {
+      return data.jobTitles && data.jobTitles.length > 0;
+    }
+    return true;
+  },
+  {
+    message: "Add at least one job title when using keyword search",
+    path: ["jobTitles"],
+  }
+);
 
 type Step1FormValues = zod.infer<typeof step1Schema>;
 
@@ -50,16 +72,105 @@ const locationOptions = [
 
 const jobTypeOptions = [
   { value: "fulltime", label: "Full-time" },
-  { value: "parttime", label: "Part-Time" },
-  { value: "contractor", label: "Contractor / Temp" },
+  { value: "parttime", label: "Part-time" },
+  { value: "contractor", label: "Contractor" },
   { value: "internship", label: "Internship" },
 ];
 
 const searchMethodOptions = [
-  { value: "keywords", label: "Job Title Keywords", icon: <MagnifyingGlass size={18} /> },
-  { value: "favorite", label: "Favorite Jobs", icon: <Briefcase size={18} /> },
-  { value: "applied", label: "Applied Jobs", icon: <Briefcase size={18} /> },
+  {
+    value: "keywords",
+    label: "Job Title Keywords",
+    description: "Search by job titles",
+    icon: <MagnifyingGlass size={20} weight="duotone" />,
+  },
+  {
+    value: "favorite",
+    label: "Favorite Jobs",
+    description: "Use your saved jobs",
+    icon: <BookmarkSimple size={20} weight="duotone" />,
+  },
+  {
+    value: "applied",
+    label: "Applied Jobs",
+    description: "Similar to applied",
+    icon: <ClockCounterClockwise size={20} weight="duotone" />,
+  },
 ];
+
+// Section Header Component
+const SectionHeader = ({
+  icon,
+  title,
+  subtitle,
+  color = "#7c3aed",
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle?: string;
+  color?: string;
+}) => (
+  <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, mb: 3 }}>
+    <Box
+      sx={{
+        width: 40,
+        height: 40,
+        borderRadius: "12px",
+        background: `linear-gradient(135deg, ${color}20 0%, ${color}10 100%)`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: color,
+        flexShrink: 0,
+      }}
+    >
+      {icon}
+    </Box>
+    <Box>
+      <Typography
+        variant="h6"
+        sx={{
+          fontWeight: 700,
+          color: "#1f2937",
+          fontSize: { xs: "1rem", sm: "1.125rem" },
+          lineHeight: 1.3,
+        }}
+      >
+        {title}
+      </Typography>
+      {subtitle && (
+        <Typography
+          variant="body2"
+          sx={{ color: "#6b7280", fontSize: "0.875rem", mt: 0.5 }}
+        >
+          {subtitle}
+        </Typography>
+      )}
+    </Box>
+  </Box>
+);
+
+// Text Field Styles
+const textFieldSx = {
+  "& .MuiOutlinedInput-root": {
+    borderRadius: "10px",
+    backgroundColor: "#f9fafb",
+    transition: "all 0.2s ease",
+    "& fieldset": {
+      borderColor: "#e5e7eb",
+    },
+    "&:hover fieldset": {
+      borderColor: "#d1d5db",
+    },
+    "&.Mui-focused": {
+      backgroundColor: "#fff",
+      "& fieldset": {
+        borderColor: "#7c3aed",
+        borderWidth: "2px",
+      },
+    },
+  },
+};
 
 export function CopilotStep1Form({ defaultValues, onNext }: CopilotStep1FormProps): React.JSX.Element {
   const {
@@ -83,467 +194,400 @@ export function CopilotStep1Form({ defaultValues, onNext }: CopilotStep1FormProp
   const searchMethod = watch("searchMethod");
 
   return (
-    <Box component="form" onSubmit={handleSubmit(onNext)} sx={{ width: "100%" }}>
-      <Typography
-        variant="h6"
-        sx={{
-          mb: 1,
-          fontWeight: 600,
-          fontSize: { xs: "1.125rem", sm: "1.25rem" },
-          color: "#111827",
-        }}
-      >
-        First, select the Work Location and Jobs you are looking for
-      </Typography>
-
-      {/* Work Location Section */}
-      <Box sx={{ mb: 5 }}>
-        <FormControl fullWidth sx={{ mb: 3 }}>
-          <FormLabel
-            sx={{
-              mb: 1.5,
-              fontWeight: 600,
-              fontSize: { xs: "0.9375rem", sm: "1rem" },
-              color: "#374151",
-            }}
-          >
-            Work Location
-          </FormLabel>
-          <Typography
-            variant="body2"
-            sx={{
-              mb: 2,
-              color: "#6b7280",
-              fontSize: { xs: "0.8125rem", sm: "0.875rem" },
-            }}
-          >
-            Are you looking for jobs that are remote, have a physical location, or both?
-          </Typography>
-
-          <Controller
-            name="workLocationType"
-            control={control}
-            render={({ field }) => (
-              <Box>
-                <ToggleButtonGroup
-                  {...field}
-                  exclusive
-                  onChange={(_, value) => {
-                    if (value !== null) {
-                      field.onChange(value);
-                    }
-                  }}
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 2,
-                    "& .MuiToggleButtonGroup-grouped": {
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "12px !important",
-                      margin: 0,
-                    },
-                  }}
-                >
-                  <ToggleButton
-                    value="remote"
-                    sx={{
-                      justifyContent: "flex-start",
-                      padding: "16px 20px",
-                      textTransform: "none",
-                      color: "#374151",
-                      fontSize: { xs: "0.9375rem", sm: "1rem" },
-                      fontWeight: 500,
-                      "&.Mui-selected": {
-                        backgroundColor: "#7c3aed",
-                        color: "white",
-                        border: "1px solid #7c3aed",
-                        "&:hover": {
-                          backgroundColor: "#6d28d9",
-                        },
-                      },
-                    }}
-                  >
-                    <Box
-                      component="span"
-                      sx={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: "50%",
-                        border: "2px solid",
-                        borderColor: field.value === "remote" ? "white" : "#d1d5db",
-                        backgroundColor: field.value === "remote" ? "white" : "transparent",
-                        mr: 2,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      {field.value === "remote" && (
-                        <Box
-                          component="span"
-                          sx={{
-                            width: 10,
-                            height: 10,
-                            borderRadius: "50%",
-                            backgroundColor: "#7c3aed",
-                          }}
-                        />
-                      )}
-                    </Box>
-                    Remote Jobs
-                  </ToggleButton>
-
-                  <ToggleButton
-                    value="onsite"
-                    sx={{
-                      justifyContent: "flex-start",
-                      padding: "16px 20px",
-                      textTransform: "none",
-                      color: "#374151",
-                      fontSize: { xs: "0.9375rem", sm: "1rem" },
-                      fontWeight: 500,
-                      "&.Mui-selected": {
-                        backgroundColor: "#7c3aed",
-                        color: "white",
-                        border: "1px solid #7c3aed",
-                        "&:hover": {
-                          backgroundColor: "#6d28d9",
-                        },
-                      },
-                    }}
-                  >
-                    <Box
-                      component="span"
-                      sx={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: "50%",
-                        border: "2px solid",
-                        borderColor: field.value === "onsite" ? "white" : "#d1d5db",
-                        backgroundColor: field.value === "onsite" ? "white" : "transparent",
-                        mr: 2,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      {field.value === "onsite" && (
-                        <Box
-                          component="span"
-                          sx={{
-                            width: 10,
-                            height: 10,
-                            borderRadius: "50%",
-                            backgroundColor: "#7c3aed",
-                          }}
-                        />
-                      )}
-                    </Box>
-                    On-site Jobs / Hybrid
-                  </ToggleButton>
-                </ToggleButtonGroup>
-                {errors.workLocationType && (
-                  <FormHelperText error sx={{ ml: 1.75, mt: 1 }}>
-                    {errors.workLocationType.message}
-                  </FormHelperText>
-                )}
-              </Box>
-            )}
-          />
-        </FormControl>
-
-        {/* Location Fields */}
-        {workLocationType === "remote" && (
-          <FormControl fullWidth sx={{ mb: 3 }}>
-            <Controller
-              name="remoteLocations"
-              control={control}
-              render={({ field: { onChange, value } }) => (
-                <Autocomplete
-                  multiple
-                  options={locationOptions}
-                  value={value || []}
-                  onChange={(_, newValue) => onChange(newValue)}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder="Worldwide"
-                      InputProps={{
-                        ...params.InputProps,
-                        startAdornment: (
-                          <>
-                            <MapPin size={20} style={{ marginLeft: 12, color: "#9ca3af" }} />
-                            {params.InputProps.startAdornment}
-                          </>
-                        ),
-                      }}
-                      sx={{
-                        "& .MuiOutlinedInput-root": {
-                          borderRadius: "12px",
-                          fontSize: { xs: "0.9375rem", sm: "1rem" },
-                        },
-                      }}
-                    />
-                  )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        label={option}
-                        {...getTagProps({ index })}
-                        key={option}
-                        size="small"
-                        sx={{
-                          backgroundColor: "#dbeafe",
-                          color: "#1e40af",
-                          fontSize: { xs: "0.75rem", sm: "0.8125rem" },
-                        }}
-                      />
-                    ))
-                  }
-                />
-              )}
-            />
-          </FormControl>
-        )}
-
-        {workLocationType === "onsite" && (
-          <FormControl fullWidth sx={{ mb: 3 }}>
-            <Controller
-              name="onsiteLocations"
-              control={control}
-              render={({ field: { onChange, value } }) => (
-                <Autocomplete
-                  multiple
-                  options={locationOptions}
-                  value={value || []}
-                  onChange={(_, newValue) => onChange(newValue)}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder="Type and select locations on Google"
-                      InputProps={{
-                        ...params.InputProps,
-                        startAdornment: (
-                          <>
-                            <MapPin size={20} style={{ marginLeft: 12, color: "#9ca3af" }} />
-                            {params.InputProps.startAdornment}
-                          </>
-                        ),
-                      }}
-                      sx={{
-                        "& .MuiOutlinedInput-root": {
-                          borderRadius: "12px",
-                          fontSize: { xs: "0.9375rem", sm: "1rem" },
-                        },
-                      }}
-                    />
-                  )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        label={option}
-                        {...getTagProps({ index })}
-                        key={option}
-                        size="small"
-                        sx={{
-                          backgroundColor: "#dbeafe",
-                          color: "#1e40af",
-                          fontSize: { xs: "0.75rem", sm: "0.8125rem" },
-                        }}
-                      />
-                    ))
-                  }
-                />
-              )}
-            />
-          </FormControl>
-        )}
+    <Box
+      component="form"
+      onSubmit={handleSubmit(onNext)}
+      sx={{ width: "100%", maxWidth: 700, mx: "auto" }}
+    >
+      {/* Page Title - Hidden on mobile */}
+      <Box sx={{ display: { xs: "none", sm: "block" }, mb: 4, textAlign: "center" }}>
+        <Typography
+          variant="h5"
+          sx={{
+            fontWeight: 700,
+            fontSize: { sm: "1.25rem", md: "1.5rem" },
+            color: "#111827",
+            mb: 1,
+          }}
+        >
+          Set Up Your Job Search
+        </Typography>
+        <Typography
+          variant="body2"
+          sx={{ color: "#6b7280", fontSize: "0.9375rem" }}
+        >
+          Tell us what kind of jobs you're looking for
+        </Typography>
       </Box>
 
-      {/* Job Types Section */}
-      <Box sx={{ mb: 5 }}>
-        <FormControl fullWidth>
-          <FormLabel
-            sx={{
-              mb: 1.5,
-              fontWeight: 600,
-              fontSize: { xs: "0.9375rem", sm: "1rem" },
-              color: "#374151",
-            }}
-          >
-            Job Types
-          </FormLabel>
-          <Typography
-            variant="body2"
-            sx={{
-              mb: 2,
-              color: "#6b7280",
-              fontSize: { xs: "0.8125rem", sm: "0.875rem" },
-            }}
-          >
-            What job types are you looking for? Select at least one.
-          </Typography>
+      {/* Work Location Section */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 3, sm: 4 },
+          borderRadius: "16px",
+          border: "1px solid #e5e7eb",
+          mb: 3,
+        }}
+      >
+        <SectionHeader
+          icon={<Globe size={22} weight="duotone" />}
+          title="Work Location"
+          subtitle="Are you looking for remote, on-site, or hybrid positions?"
+          color="#7c3aed"
+        />
 
-          <Controller
-            name="jobTypes"
-            control={control}
-            render={({ field: { onChange, value } }) => (
-              <Box>
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 1.5,
-                  }}
-                >
-                  {jobTypeOptions.map((option) => (
+        <Controller
+          name="workLocationType"
+          control={control}
+          render={({ field }) => (
+            <Box>
+              <Grid container spacing={2}>
+                {[
+                  {
+                    value: "remote",
+                    label: "Remote Jobs",
+                    description: "Work from anywhere",
+                    icon: <Globe size={24} weight="duotone" />,
+                  },
+                  {
+                    value: "onsite",
+                    label: "On-site / Hybrid",
+                    description: "Office-based positions",
+                    icon: <Buildings size={24} weight="duotone" />,
+                  },
+                ].map((option) => (
+                  <Grid size={{ xs: 12, sm: 6 }} key={option.value}>
+                    <Box
+                      onClick={() => field.onChange(option.value)}
+                      sx={{
+                        p: 2.5,
+                        borderRadius: "12px",
+                        border: "2px solid",
+                        borderColor: field.value === option.value ? "#7c3aed" : "#e5e7eb",
+                        backgroundColor: field.value === option.value ? "#f5f3ff" : "#fff",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 2,
+                        "&:hover": {
+                          borderColor: field.value === option.value ? "#7c3aed" : "#d1d5db",
+                          backgroundColor: field.value === option.value ? "#f5f3ff" : "#f9fafb",
+                        },
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: 48,
+                          height: 48,
+                          borderRadius: "12px",
+                          backgroundColor: field.value === option.value ? "#7c3aed" : "#f3f4f6",
+                          color: field.value === option.value ? "#fff" : "#6b7280",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          transition: "all 0.2s ease",
+                        }}
+                      >
+                        {option.icon}
+                      </Box>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography
+                          sx={{
+                            fontWeight: 600,
+                            fontSize: "0.9375rem",
+                            color: field.value === option.value ? "#7c3aed" : "#374151",
+                          }}
+                        >
+                          {option.label}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            fontSize: "0.8125rem",
+                            color: "#6b7280",
+                          }}
+                        >
+                          {option.description}
+                        </Typography>
+                      </Box>
+                      <Box
+                        sx={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: "50%",
+                          border: "2px solid",
+                          borderColor: field.value === option.value ? "#7c3aed" : "#d1d5db",
+                          backgroundColor: field.value === option.value ? "#7c3aed" : "transparent",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {field.value === option.value && (
+                          <Box
+                            sx={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: "50%",
+                              backgroundColor: "#fff",
+                            }}
+                          />
+                        )}
+                      </Box>
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
+              {errors.workLocationType && (
+                <FormHelperText error sx={{ mt: 1 }}>
+                  {errors.workLocationType.message}
+                </FormHelperText>
+              )}
+            </Box>
+          )}
+        />
+
+        {/* Location Autocomplete - Show based on selection */}
+        {workLocationType && (
+          <Box sx={{ mt: 3 }}>
+            <FormLabel
+              sx={{
+                mb: 1,
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                color: "#374151",
+                display: "block",
+              }}
+            >
+              {workLocationType === "remote" ? "Preferred Regions" : "Preferred Locations"}
+            </FormLabel>
+            <Controller
+              name={workLocationType === "remote" ? "remoteLocations" : "onsiteLocations"}
+              control={control}
+              render={({ field: { onChange, value } }) => (
+                <Autocomplete
+                  multiple
+                  options={locationOptions}
+                  value={value || []}
+                  onChange={(_, newValue) => onChange(newValue)}
+                  size="small"
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder={
+                        workLocationType === "remote"
+                          ? "Select regions (e.g., Worldwide, Europe)"
+                          : "Select locations"
+                      }
+                      slotProps={{
+                        input: {
+                          ...params.InputProps,
+                          startAdornment: (
+                            <>
+                              <MapPin
+                                size={18}
+                                style={{ marginLeft: 8, marginRight: 4, color: "#9ca3af" }}
+                              />
+                              {params.InputProps.startAdornment}
+                            </>
+                          ),
+                        },
+                      }}
+                      sx={textFieldSx}
+                    />
+                  )}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip
+                        label={option}
+                        {...getTagProps({ index })}
+                        key={option}
+                        size="small"
+                        sx={{
+                          backgroundColor: "#ede9fe",
+                          color: "#7c3aed",
+                          fontWeight: 500,
+                          "& .MuiChip-deleteIcon": {
+                            color: "#7c3aed",
+                            "&:hover": { color: "#6d28d9" },
+                          },
+                        }}
+                      />
+                    ))
+                  }
+                />
+              )}
+            />
+          </Box>
+        )}
+      </Paper>
+
+      {/* Job Types Section */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 3, sm: 4 },
+          borderRadius: "16px",
+          border: "1px solid #e5e7eb",
+          mb: 3,
+        }}
+      >
+        <SectionHeader
+          icon={<Briefcase size={22} weight="duotone" />}
+          title="Job Types"
+          subtitle="What type of employment are you looking for?"
+          color="#10b981"
+        />
+
+        <Controller
+          name="jobTypes"
+          control={control}
+          render={({ field: { onChange, value } }) => (
+            <Box>
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5 }}>
+                {jobTypeOptions.map((option) => {
+                  const isSelected = value?.includes(option.value);
+                  return (
                     <Chip
                       key={option.value}
                       label={option.label}
                       onClick={() => {
-                        const newValue = value?.includes(option.value)
+                        const newValue = isSelected
                           ? value.filter((v) => v !== option.value)
                           : [...(value || []), option.value];
                         onChange(newValue);
                       }}
                       sx={{
-                        padding: "8px 16px",
+                        padding: "8px 4px",
                         height: "auto",
-                        fontSize: { xs: "0.875rem", sm: "0.9375rem" },
+                        fontSize: "0.875rem",
                         fontWeight: 500,
-                        borderRadius: "24px",
+                        borderRadius: "20px",
                         cursor: "pointer",
-                        ...(value?.includes(option.value)
+                        transition: "all 0.2s ease",
+                        ...(isSelected
                           ? {
-                              backgroundColor: "#7c3aed",
+                              backgroundColor: "#10b981",
                               color: "white",
-                              "&:hover": {
-                                backgroundColor: "#6d28d9",
-                              },
+                              "&:hover": { backgroundColor: "#059669" },
                             }
                           : {
-                              backgroundColor: "transparent",
+                              backgroundColor: "#f9fafb",
                               color: "#374151",
                               border: "1px solid #e5e7eb",
-                              "&:hover": {
-                                backgroundColor: "#f3f4f6",
-                              },
+                              "&:hover": { backgroundColor: "#f3f4f6", borderColor: "#d1d5db" },
                             }),
                       }}
                     />
-                  ))}
-                </Box>
-                {errors.jobTypes && (
-                  <FormHelperText error sx={{ ml: 1.75, mt: 1 }}>
-                    {errors.jobTypes.message}
-                  </FormHelperText>
-                )}
+                  );
+                })}
               </Box>
-            )}
-          />
-        </FormControl>
-      </Box>
+              {errors.jobTypes && (
+                <FormHelperText error sx={{ mt: 1 }}>
+                  {errors.jobTypes.message}
+                </FormHelperText>
+              )}
+            </Box>
+          )}
+        />
+      </Paper>
 
       {/* Search Method Section */}
-      <Box sx={{ mb: 5 }}>
-        <FormControl fullWidth>
-          <FormLabel
-            sx={{
-              mb: 1.5,
-              fontWeight: 600,
-              fontSize: { xs: "0.9375rem", sm: "1rem" },
-              color: "#374151",
-            }}
-          >
-            Search Method
-          </FormLabel>
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 3, sm: 4 },
+          borderRadius: "16px",
+          border: "1px solid #e5e7eb",
+          mb: 3,
+        }}
+      >
+        <SectionHeader
+          icon={<MagnifyingGlass size={22} weight="duotone" />}
+          title="Search Method"
+          subtitle="How would you like to find jobs?"
+          color="#f59e0b"
+        />
 
-          <Controller
-            name="searchMethod"
-            control={control}
-            render={({ field }) => (
-              <ToggleButtonGroup
-                {...field}
-                exclusive
-                onChange={(_, value) => {
-                  if (value !== null) {
-                    field.onChange(value);
-                  }
-                }}
-                sx={{
-                  display: "flex",
-                  flexDirection: { xs: "column", sm: "row" },
-                  gap: 1.5,
-                  "& .MuiToggleButtonGroup-grouped": {
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "12px !important",
-                    margin: 0,
-                    flex: { xs: "none", sm: 1 },
-                  },
-                }}
-              >
-                {searchMethodOptions.map((option) => (
-                  <ToggleButton
-                    key={option.value}
-                    value={option.value}
+        <Controller
+          name="searchMethod"
+          control={control}
+          render={({ field }) => (
+            <Grid container spacing={2}>
+              {searchMethodOptions.map((option) => (
+                <Grid size={{ xs: 12, sm: 4 }} key={option.value}>
+                  <Box
+                    onClick={() => field.onChange(option.value)}
                     sx={{
-                      padding: { xs: "10px 16px", sm: "12px 20px" },
-                      textTransform: "none",
-                      color: "#374151",
-                      fontSize: { xs: "0.8125rem", sm: "0.9375rem" },
-                      fontWeight: 500,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: { xs: "center", sm: "flex-start" },
-                      gap: 1,
-                      "&.Mui-selected": {
-                        backgroundColor: "#7c3aed",
-                        color: "white",
-                        border: "1px solid #7c3aed",
-                        "&:hover": {
-                          backgroundColor: "#6d28d9",
-                        },
+                      p: 2,
+                      borderRadius: "12px",
+                      border: "2px solid",
+                      borderColor: field.value === option.value ? "#f59e0b" : "#e5e7eb",
+                      backgroundColor: field.value === option.value ? "#fffbeb" : "#fff",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                      textAlign: "center",
+                      "&:hover": {
+                        borderColor: field.value === option.value ? "#f59e0b" : "#d1d5db",
                       },
                     }}
                   >
-                    {option.icon}
-                    <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+                    <Box
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: "10px",
+                        backgroundColor: field.value === option.value ? "#f59e0b" : "#f3f4f6",
+                        color: field.value === option.value ? "#fff" : "#6b7280",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        mx: "auto",
+                        mb: 1.5,
+                      }}
+                    >
+                      {option.icon}
+                    </Box>
+                    <Typography
+                      sx={{
+                        fontWeight: 600,
+                        fontSize: "0.875rem",
+                        color: field.value === option.value ? "#b45309" : "#374151",
+                        mb: 0.5,
+                      }}
+                    >
                       {option.label}
-                    </Box>
-                    <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
-                      {option.label.replace(" Jobs", "").replace("Job Title ", "")}
-                    </Box>
-                  </ToggleButton>
-                ))}
-              </ToggleButtonGroup>
-            )}
-          />
-        </FormControl>
-      </Box>
+                    </Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "#6b7280" }}>
+                      {option.description}
+                    </Typography>
+                  </Box>
+                </Grid>
+              ))}
+            </Grid>
+          )}
+        />
 
-      Job Titles Section
-      {searchMethod === "keywords" && (
-        <Box sx={{ mb: 5 }}>
-          <FormControl fullWidth>
+        {/* Job Titles - Only show for keywords search */}
+        {searchMethod === "keywords" && (
+          <Box sx={{ mt: 3 }}>
             <FormLabel
               sx={{
-                mb: 1.5,
+                mb: 1,
                 fontWeight: 600,
-                fontSize: { xs: "0.9375rem", sm: "1rem" },
+                fontSize: "0.875rem",
                 color: "#374151",
+                display: "block",
               }}
             >
               Job Titles
             </FormLabel>
             <Typography
               variant="body2"
-              sx={{
-                mb: 2,
-                color: "#6b7280",
-                fontSize: { xs: "0.8125rem", sm: "0.875rem" },
-              }}
+              sx={{ mb: 1.5, color: "#6b7280", fontSize: "0.8125rem" }}
             >
-              What job titles are you looking for? Type in and select up to 5
+              Add up to 5 job titles you're interested in
             </Typography>
 
             <Controller
@@ -561,18 +605,14 @@ export function CopilotStep1Form({ defaultValues, onNext }: CopilotStep1FormProp
                         onChange(newValue);
                       }
                     }}
+                    size="small"
                     renderInput={(params) => (
                       <TextField
                         {...params}
-                        placeholder="e.g. 3D Visualizer Engineer"
+                        placeholder="e.g. Software Engineer, Product Manager"
                         error={Boolean(errors.jobTitles)}
                         helperText={errors.jobTitles?.message}
-                        sx={{
-                          "& .MuiOutlinedInput-root": {
-                            borderRadius: "12px",
-                            fontSize: { xs: "0.9375rem", sm: "1rem" },
-                          },
-                        }}
+                        sx={textFieldSx}
                       />
                     )}
                     renderTags={(value, getTagProps) =>
@@ -583,48 +623,44 @@ export function CopilotStep1Form({ defaultValues, onNext }: CopilotStep1FormProp
                           key={option}
                           size="small"
                           sx={{
-                            backgroundColor: "#dbeafe",
-                            color: "#1e40af",
-                            fontSize: { xs: "0.75rem", sm: "0.8125rem" },
+                            backgroundColor: "#fef3c7",
+                            color: "#b45309",
+                            fontWeight: 500,
+                            "& .MuiChip-deleteIcon": {
+                              color: "#b45309",
+                              "&:hover": { color: "#92400e" },
+                            },
                           }}
                         />
                       ))
                     }
                   />
+
+                  {/* Tip Box */}
                   <Box
                     sx={{
                       display: "flex",
-                      alignItems: "center",
-                      gap: 1,
+                      alignItems: "flex-start",
+                      gap: 1.5,
                       mt: 2,
                       p: 2,
                       backgroundColor: "#fef3c7",
-                      borderRadius: "8px",
+                      borderRadius: "10px",
+                      border: "1px solid #fde68a",
                     }}
                   >
-                    <Typography
-                      sx={{
-                        fontSize: "1.25rem",
-                      }}
-                    >
-                      💡
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: "#92400e",
-                        fontSize: { xs: "0.75rem", sm: "0.8125rem" },
-                      }}
-                    >
-                      Tip: Adding similar job titles helps to find more jobs - don't miss out!
+                    <Lightbulb size={20} weight="duotone" style={{ color: "#b45309", flexShrink: 0, marginTop: 2 }} />
+                    <Typography sx={{ fontSize: "0.8125rem", color: "#92400e" }}>
+                      <strong>Tip:</strong> Adding similar job titles helps find more opportunities.
+                      For example, "Frontend Developer" and "React Developer" will match different listings.
                     </Typography>
                   </Box>
                 </Box>
               )}
             />
-          </FormControl>
-        </Box>
-      )}
+          </Box>
+        )}
+      </Paper>
 
       {/* Next Button */}
       <Button
@@ -635,19 +671,21 @@ export function CopilotStep1Form({ defaultValues, onNext }: CopilotStep1FormProp
         endIcon={<ArrowRight size={20} weight="bold" />}
         sx={{
           borderRadius: "12px",
-          padding: { xs: "12px 24px", sm: "14px 32px" },
+          padding: "14px 32px",
           textTransform: "none",
-          fontSize: { xs: "0.9375rem", sm: "1rem" },
+          fontSize: "1rem",
           fontWeight: 600,
           background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)",
-          boxShadow: "0 4px 12px rgba(124, 58, 237, 0.3)",
+          boxShadow: "0 4px 14px rgba(124, 58, 237, 0.35)",
           "&:hover": {
             background: "linear-gradient(135deg, #6d28d9 0%, #9333ea 100%)",
-            boxShadow: "0 6px 16px rgba(124, 58, 237, 0.4)",
+            boxShadow: "0 6px 20px rgba(124, 58, 237, 0.45)",
+            transform: "translateY(-1px)",
           },
+          transition: "all 0.2s ease",
         }}
       >
-        Next: Profile Information
+        Next: Filters & Preferences
       </Button>
     </Box>
   );

@@ -1,5 +1,5 @@
 import { ApplicationAdapter, ApplicationDetailAdapter, CandidateApplicationsAdapter, CandidateStatsAdapter } from "@/models/applciation.adapter";
-import { ActiveCopilotsAdapter } from "@/models/copilots";
+import { ActiveCopilotsAdapter, CopilotScrapingResponseAdapter } from "@/models/copilots";
 import { ActiveScrapingTasksResponse } from "@/types/copilot";
 import { apiUrlPaths } from "./api.paths";
 import { axiosInstances } from "./networkInstance";
@@ -25,8 +25,8 @@ export const getApplications = async (limit = 100) => {
 
     const data = Array.isArray(response?.data?.applications)
       ? response.data.applications.map((item: any) =>
-          applicationAdapter.adapt(item),
-        )
+        applicationAdapter.adapt(item),
+      )
       : [];
 
     return { success: true, data };
@@ -149,11 +149,11 @@ export const getActiveScrapingTasks =
 
       return response?.status === 200
         ? {
-            success: true,
-            data: new ActiveCopilotsAdapter().adapt(
-              response?.data,
-            ),
-          }
+          success: true,
+          data: new CopilotScrapingResponseAdapter().adapt(
+            response?.data,
+          ),
+        }
         : { success: false };
     } catch (error: any) {
       console.error("Error fetching active scraping tasks:", error);

@@ -1,4 +1,5 @@
-import { Navigate, RouteObject } from "react-router-dom";
+import { RouteObject } from "react-router-dom";
+import Home from "@/pages/Home";
 import { route as authRoute } from "@/routes/auth/auth";
 import { route as copilotRoute } from "@/routes/copilot";
 import { NotFoundPage } from "@/pages/not-found";
@@ -10,7 +11,7 @@ import { supportRoute } from "@/routes/support";
 export const routes: RouteObject[] = [
   {
     path: "/",
-    element: <Navigate to="/auth/signin" replace />,
+    element: <Home />,
   },
   authRoute,
   applicationRoute,
