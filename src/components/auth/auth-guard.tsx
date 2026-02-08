@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React from "react";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
 export interface AuthGuardProps {
@@ -11,19 +11,8 @@ export interface AuthGuardProps {
  * Redirects unauthenticated users to login page
  */
 export function AuthGuard({ children }: AuthGuardProps): React.JSX.Element {
-  const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, loading } = useAuth();
-
-  useEffect(() => {
-    // Only redirect after loading is complete and user is not authenticated
-    if (!loading && !isAuthenticated) {
-      navigate("/auth/signin", {
-        state: { returnUrl: location?.pathname },
-        replace: true,
-      });
-    }
-  }, [loading, isAuthenticated, navigate, location?.pathname]);
 
   // Show loading spinner while checking authentication
   if (loading) {
@@ -34,9 +23,14 @@ export function AuthGuard({ children }: AuthGuardProps): React.JSX.Element {
     );
   }
 
-  // Only render children if authenticated
   if (!isAuthenticated) {
-    return <></>;
+    return (
+      <Navigate
+        to="/auth/signin"
+        replace
+        state={{ returnUrl: location.pathname }}
+      />
+    );
   }
 
   return <>{children}</>;
