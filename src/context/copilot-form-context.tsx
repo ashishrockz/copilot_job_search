@@ -2,7 +2,8 @@ import * as React from "react";
 
 // Step 1: Work Location and Job Types
 export interface Step1Data {
-  workLocationType: "remote" | "onsite" | "hybrid" | "";
+  enableRemote: boolean;
+  enableOnsite: boolean;
   remoteLocations: string[];
   onsiteLocations: string[];
   jobTypes: string[];
@@ -75,7 +76,8 @@ interface CopilotFormContextType {
 
 const defaultFormData: CopilotFormData = {
   step1: {
-    workLocationType: "",
+    enableRemote: false,
+    enableOnsite: false,
     remoteLocations: [],
     onsiteLocations: [],
     jobTypes: [],

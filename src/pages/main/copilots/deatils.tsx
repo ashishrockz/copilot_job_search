@@ -238,7 +238,7 @@ function AddCard({ onAdd, cardsCount }: AddCardProps) {
   return (
     <div
       onClick={onAdd}
-      className="group relative flex flex-col items-center justify-center min-h-[480px] bg-gradient-to-br from-indigo-50/50 to-white rounded-3xl border-2 border-dashed border-indigo-200 hover:border-indigo-400 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden"
+      className="group relative flex flex-col items-center justify-center min-h-[340px] bg-gradient-to-br from-indigo-50/50 to-white rounded-3xl border-2 border-dashed border-indigo-200 hover:border-indigo-400 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden"
     >
       <div className="absolute inset-0 bg-white/40 group-hover:bg-transparent transition-colors duration-300" />
 
@@ -257,12 +257,12 @@ function AddCard({ onAdd, cardsCount }: AddCardProps) {
           <span className="font-semibold text-indigo-600">{3 - cardsCount} slots remaining</span>
         </p>
 
-        <Button
+        {/* <Button
           variant="contained"
           className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-2 px-6 shadow-lg shadow-indigo-200 font-semibold normal-case group-hover:scale-105 transition-transform"
         >
           Start Setup
-        </Button>
+        </Button> */}
       </div>
     </div>
   );
@@ -307,9 +307,9 @@ interface GuideCardProps {
 
 function GuideCard({ icon, title, gradient }: GuideCardProps) {
   return (
-    <button className="group relative flex flex-col items-center gap-4 p-6 rounded-2xl bg-white border border-gray-100 hover:border-indigo-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 w-full">
+    <button className="group relative flex flex-col items-center gap-4 p-4 rounded-2xl bg-white border border-gray-100 hover:border-indigo-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 w-full">
       <div
-        className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}
+        className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}
       >
         {icon}
       </div>
@@ -455,17 +455,17 @@ export function Page(): React.JSX.Element {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pb-20">
+    <div className="min-h-screen bg-gray-50/50 ">
 
       {/* Page Header */}
-      <div className="bg-white border-b border-gray-100 pt-8 pb-12 px-6">
+      <div className="bg-white border-b border-gray-100 pt-4 pb-6 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center gap-4 mb-4">
             <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
               <Lightning weight="fill" size={28} />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">My Copilots</h1>
+              <h1 className="text-xl font-bold text-gray-900">My Copilots</h1>
               <p className="text-gray-500">Manage your active job search assistants</p>
             </div>
           </div>
@@ -484,7 +484,7 @@ export function Page(): React.JSX.Element {
         )}
 
         {/* Copilot Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
           {loading ? (
             <>
               <SkeletonCard />
@@ -515,7 +515,7 @@ export function Page(): React.JSX.Element {
         </div>
 
         {/* Guides Section */}
-        <div className="mb-12">
+        <div >
           <div className="flex items-center gap-3 mb-6">
             <div className="h-8 w-1 bg-indigo-500 rounded-full" />
             <h2 className="text-2xl font-bold text-gray-900">Knowledge Base</h2>

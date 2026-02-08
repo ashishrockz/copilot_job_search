@@ -6,47 +6,39 @@ import {
   Box,
   TextField,
   Button,
+  FormLabel,
   Typography,
   Chip,
   Autocomplete,
-  IconButton,
-  CircularProgress,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
   Paper,
   Grid,
-  FormHelperText,
+  CircularProgress,
 } from "@mui/material";
 import {
   ArrowRightIcon as ArrowRight,
   ArrowLeftIcon as ArrowLeft,
-  UploadSimpleIcon as UploadSimple,
-  XIcon as X,
-  FilePdfIcon as FilePdf,
-  FileDocIcon as FileDoc,
-  CheckCircleIcon as CheckCircle,
-  PlusIcon as Plus,
   UserIcon as User,
+  FileTextIcon as FileText,
+  PhoneIcon as Phone,
   MapPinIcon as MapPin,
   BriefcaseIcon as Briefcase,
   CurrencyDollarIcon as CurrencyDollar,
   LinkedinLogoIcon as LinkedinLogo,
   GlobeIcon as Globe,
-  FileTextIcon as FileText,
+  IdentificationCardIcon as IdentificationCard,
 } from "@phosphor-icons/react";
 import { Step3Data } from "@/context/copilot-form-context";
+import { getLanguages, getCountries } from "@/lib/reference-data.service";
+import { toast } from "sonner";
 
-// Zod validation schema - matches Step3Data interface
+// Zod validation schema
 const step3Schema = zod.object({
-  cvLink: zod.string().min(1, { message: "Please upload your CV/Resume" }),
+  cvLink: zod.string().optional(),
   phoneNumber: zod.string().optional(),
   coverLetter: zod.string().optional(),
-  currentLocation: zod.string().min(1, { message: "Current location is required" }),
-  stateRegion: zod.string().optional(),
-  postCode: zod.string().optional(),
+  currentLocation: zod.string().optional(),
   currentJobTitle: zod.string().optional(),
-  availability: zod.string().min(1, { message: "Please select your availability" }),
+  availability: zod.string().optional(),
   eligibleCountries: zod.array(zod.string()),
   futureLanguages: zod.array(zod.string()),
   nationality: zod.array(zod.string()),
@@ -55,8 +47,10 @@ const step3Schema = zod.object({
   expectedSalaryFullTime: zod.string().optional(),
   expectedSalaryPartTime: zod.string().optional(),
   linkedInProfile: zod.string().optional(),
-  experienceSummary: zod.string().min(1, { message: "Experience summary is required" }),
+  experienceSummary: zod.string().optional(),
   screeningQuestions: zod.string().optional(),
+  stateRegion: zod.string().optional(),
+  postCode: zod.string().optional(),
 });
 
 type Step3FormValues = zod.infer<typeof step3Schema>;
@@ -66,37 +60,6 @@ interface CopilotStep3FormProps {
   onNext: (values: Step3FormValues) => void;
   onBack: () => void;
 }
-
-const availabilityOptions = [
-  { value: "immediate", label: "Immediately" },
-  { value: "2weeks", label: "2 Weeks" },
-  { value: "1month", label: "1 Month" },
-  { value: "2months", label: "2+ Months" },
-];
-
-const countryOptions = [
-  "United States",
-  "United Kingdom",
-  "Canada",
-  "Germany",
-  "France",
-  "Australia",
-  "Netherlands",
-  "India",
-  "Singapore",
-  "Belgium",
-];
-
-const languageOptions = [
-  "English",
-  "Spanish",
-  "French",
-  "German",
-  "Mandarin",
-  "Hindi",
-  "Portuguese",
-  "Japanese",
-];
 
 // Section Header Component
 const SectionHeader = ({
@@ -150,22 +113,6 @@ const SectionHeader = ({
   </Box>
 );
 
-// Form Label Component
-const StyledLabel = ({ children, required }: { children: React.ReactNode; required?: boolean }) => (
-  <Typography
-    sx={{
-      fontSize: "0.875rem",
-      fontWeight: 600,
-      color: "#374151",
-      mb: 1,
-      display: "block",
-    }}
-  >
-    {children}
-    {required && <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>}
-  </Typography>
-);
-
 // Text Field Styles
 const textFieldSx = {
   "& .MuiOutlinedInput-root": {
@@ -188,29 +135,21 @@ const textFieldSx = {
   },
 };
 
-export function CopilotStep3Form({ defaultValues, onNext, onBack }: CopilotStep3FormProps): React.JSX.Element {
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
-  const [fileError, setFileError] = React.useState<string>("");
-  const [isUploading, setIsUploading] = React.useState(false);
-  const [uploadSuccess, setUploadSuccess] = React.useState(false);
-  const [coverLetterType, setCoverLetterType] = React.useState<"generate" | "upload">("generate");
-
+export function CopilotStep3Form({
+  defaultValues,
+  onNext,
+  onBack,
+}: CopilotStep3FormProps): React.JSX.Element {
   const {
     control,
     handleSubmit,
     formState: { errors },
-    setValue,
-    watch,
-    trigger,
   } = useForm<Step3FormValues>({
     defaultValues: {
       cvLink: defaultValues?.cvLink || "",
       phoneNumber: defaultValues?.phoneNumber || "",
       coverLetter: defaultValues?.coverLetter || "",
       currentLocation: defaultValues?.currentLocation || "",
-      stateRegion: defaultValues?.stateRegion || "",
-      postCode: defaultValues?.postCode || "",
       currentJobTitle: defaultValues?.currentJobTitle || "",
       availability: defaultValues?.availability || "",
       eligibleCountries: defaultValues?.eligibleCountries || [],
@@ -223,73 +162,54 @@ export function CopilotStep3Form({ defaultValues, onNext, onBack }: CopilotStep3
       linkedInProfile: defaultValues?.linkedInProfile || "",
       experienceSummary: defaultValues?.experienceSummary || "",
       screeningQuestions: defaultValues?.screeningQuestions || "",
+      stateRegion: defaultValues?.stateRegion || "",
+      postCode: defaultValues?.postCode || "",
     },
     resolver: zodResolver(step3Schema),
   });
 
-  const experienceSummary = watch("experienceSummary");
+  // State for API data
+  const [languages, setLanguages] = React.useState<string[]>([]);
+  const [countries, setCountries] = React.useState<string[]>([]);
+  const [loadingLanguages, setLoadingLanguages] = React.useState(false);
+  const [loadingCountries, setLoadingCountries] = React.useState(false);
 
-  const uploadResumeToAPI = async (file: File): Promise<string> => {
-    // Simulated upload - replace with actual API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    return `https://storage.example.com/resumes/${file.name}`;
-  };
+  // Fetch languages and countries on mount
+  React.useEffect(() => {
+    const fetchData = async () => {
+      setLoadingLanguages(true);
+      setLoadingCountries(true);
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+      try {
+        const [languagesRes, countriesRes] = await Promise.all([
+          getLanguages(),
+          getCountries(),
+        ]);
 
-    const validTypes = [
-      "application/pdf",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ];
+        if (languagesRes.success && languagesRes.data) {
+          const languageNames = languagesRes.data.map((lang) => lang.name);
+          setLanguages(languageNames);
+        } else {
+          toast.error("Failed to load languages");
+        }
 
-    if (!validTypes.includes(file.type)) {
-      setFileError("Please upload a PDF or Word document");
-      return;
-    }
+        if (countriesRes.success && countriesRes.data) {
+          const countryNames = countriesRes.data.map((c) => c.name);
+          setCountries(countryNames);
+        } else {
+          toast.error("Failed to load countries");
+        }
+      } catch (error) {
+        console.error("Error loading reference data:", error);
+        toast.error("Failed to load reference data");
+      } finally {
+        setLoadingLanguages(false);
+        setLoadingCountries(false);
+      }
+    };
 
-    if (file.size > 10 * 1024 * 1024) {
-      setFileError("File size must be less than 10MB");
-      return;
-    }
-
-    setUploadedFile(file);
-    setFileError("");
-    setUploadSuccess(false);
-    setIsUploading(true);
-
-    try {
-      const resumeUrl = await uploadResumeToAPI(file);
-      setValue("cvLink", resumeUrl);
-      setUploadSuccess(true);
-      trigger("cvLink");
-    } catch (error) {
-      setFileError("Failed to upload resume. Please try again.");
-      setUploadedFile(null);
-      setValue("cvLink", "");
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleRemoveFile = () => {
-    setUploadedFile(null);
-    setUploadSuccess(false);
-    setValue("cvLink", "");
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  const getFileIcon = (fileName: string) => {
-    const extension = fileName.split(".").pop()?.toLowerCase();
-    if (extension === "pdf") {
-      return <FilePdf size={24} weight="duotone" style={{ color: "#ef4444" }} />;
-    }
-    return <FileDoc size={24} weight="duotone" style={{ color: "#2563eb" }} />;
-  };
+    fetchData();
+  }, []);
 
   return (
     <Box
@@ -308,17 +228,17 @@ export function CopilotStep3Form({ defaultValues, onNext, onBack }: CopilotStep3
             mb: 1,
           }}
         >
-          Your Profile Information
+          Profile Information
         </Typography>
         <Typography
           variant="body2"
           sx={{ color: "#6b7280", fontSize: "0.9375rem" }}
         >
-          Help employers learn more about you
+          Help us personalize your applications
         </Typography>
       </Box>
 
-      {/* Resume Section */}
+      {/* Basic Information Section */}
       <Paper
         elevation={0}
         sx={{
@@ -329,151 +249,107 @@ export function CopilotStep3Form({ defaultValues, onNext, onBack }: CopilotStep3
         }}
       >
         <SectionHeader
-          icon={<FileText size={22} weight="duotone" />}
-          title="Resume & Cover Letter"
-          subtitle="Upload your CV and choose cover letter option"
+          icon={<User size={22} weight="duotone" />}
+          title="Basic Information"
+          subtitle="Your current professional details"
           color="#7c3aed"
         />
 
-        {/* CV Upload */}
-        <Box sx={{ mb: 3 }}>
-          <StyledLabel required>CV / Resume</StyledLabel>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.doc,.docx"
-            onChange={handleFileUpload}
-            style={{ display: "none" }}
-            disabled={isUploading}
-          />
-
-          {!uploadedFile ? (
-            <Box
-              onClick={() => fileInputRef.current?.click()}
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12 }}>
+            <FormLabel
               sx={{
-                p: 3,
-                border: "2px dashed #d1d5db",
-                borderRadius: "12px",
-                textAlign: "center",
-                cursor: "pointer",
-                transition: "all 0.2s ease",
-                "&:hover": {
-                  borderColor: "#7c3aed",
-                  backgroundColor: "#f5f3ff",
-                },
+                mb: 1,
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                color: "#374151",
+                display: "block",
               }}
             >
-              {isUploading ? (
-                <CircularProgress size={24} sx={{ color: "#7c3aed" }} />
-              ) : (
-                <>
-                  <UploadSimple size={32} weight="duotone" style={{ color: "#7c3aed", marginBottom: 8 }} />
-                  <Typography sx={{ fontWeight: 500, color: "#374151", mb: 0.5 }}>
-                    Click to upload your CV
-                  </Typography>
-                  <Typography sx={{ fontSize: "0.8125rem", color: "#6b7280" }}>
-                    PDF or Word document (max 10MB)
-                  </Typography>
-                </>
+              Current Job Title
+            </FormLabel>
+            <Controller
+              name="currentJobTitle"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  placeholder="e.g., Senior Software Engineer"
+                  size="small"
+                  fullWidth
+                  sx={textFieldSx}
+                />
               )}
-            </Box>
-          ) : (
-            <Box
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <FormLabel
               sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 2,
-                p: 2,
-                border: "1px solid #d1d5db",
-                borderRadius: "12px",
-                backgroundColor: "#f9fafb",
+                mb: 1,
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                color: "#374151",
+                display: "block",
               }}
             >
-              {getFileIcon(uploadedFile.name)}
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography
-                  sx={{
-                    fontSize: "0.875rem",
-                    fontWeight: 500,
-                    color: "#1f2937",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {uploadedFile.name}
-                </Typography>
-                <Typography sx={{ fontSize: "0.75rem", color: "#6b7280" }}>
-                  {(uploadedFile.size / 1024).toFixed(1)} KB
-                </Typography>
-              </Box>
-              {uploadSuccess && (
-                <CheckCircle size={20} weight="fill" style={{ color: "#10b981" }} />
-              )}
-              <IconButton size="small" onClick={handleRemoveFile} sx={{ p: 0.5 }}>
-                <X size={18} />
-              </IconButton>
-            </Box>
-          )}
-          {(fileError || errors.cvLink) && (
-            <FormHelperText error sx={{ mt: 0.5 }}>
-              {fileError || errors.cvLink?.message}
-            </FormHelperText>
-          )}
-        </Box>
-
-        {/* Cover Letter */}
-        <Box>
-          <StyledLabel>Cover Letter</StyledLabel>
-          <Grid container spacing={2}>
-            {[
-              { value: "generate", label: "Generate tailored", icon: <Plus size={18} /> },
-              { value: "upload", label: "Upload my own", icon: <UploadSimple size={18} /> },
-            ].map((option) => (
-              <Grid size={{ xs: 12, sm: 6 }} key={option.value}>
-                <Box
-                  onClick={() => setCoverLetterType(option.value as "generate" | "upload")}
-                  sx={{
-                    p: 2,
-                    borderRadius: "10px",
-                    border: "2px solid",
-                    borderColor: coverLetterType === option.value ? "#7c3aed" : "#e5e7eb",
-                    backgroundColor: coverLetterType === option.value ? "#f5f3ff" : "#fff",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1.5,
-                    transition: "all 0.2s ease",
-                    "&:hover": {
-                      borderColor: coverLetterType === option.value ? "#7c3aed" : "#d1d5db",
+              Phone Number
+            </FormLabel>
+            <Controller
+              name="phoneNumber"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  placeholder="+1 234 567 8900"
+                  size="small"
+                  fullWidth
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <Phone
+                          size={18}
+                          style={{ marginRight: 8, color: "#9ca3af" }}
+                        />
+                      ),
                     },
                   }}
-                >
-                  <Box
-                    sx={{
-                      color: coverLetterType === option.value ? "#7c3aed" : "#6b7280",
-                    }}
-                  >
-                    {option.icon}
-                  </Box>
-                  <Typography
-                    sx={{
-                      fontWeight: 500,
-                      fontSize: "0.875rem",
-                      color: coverLetterType === option.value ? "#7c3aed" : "#374151",
-                    }}
-                  >
-                    {option.label}
-                  </Typography>
-                </Box>
-              </Grid>
-            ))}
+                  sx={textFieldSx}
+                />
+              )}
+            />
           </Grid>
-        </Box>
+
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <FormLabel
+              sx={{
+                mb: 1,
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                color: "#374151",
+                display: "block",
+              }}
+            >
+              Availability
+            </FormLabel>
+            <Controller
+              name="availability"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  placeholder="e.g., Immediate, 2 weeks"
+                  size="small"
+                  fullWidth
+                  sx={textFieldSx}
+                />
+              )}
+            />
+          </Grid>
+        </Grid>
       </Paper>
 
-      {/* Contact & Location Section */}
+      {/* Location & Documents Section */}
       <Paper
         elevation={0}
         sx={{
@@ -485,129 +361,121 @@ export function CopilotStep3Form({ defaultValues, onNext, onBack }: CopilotStep3
       >
         <SectionHeader
           icon={<MapPin size={22} weight="duotone" />}
-          title="Contact & Location"
-          subtitle="Your contact details and current location"
+          title="Location & Documents"
+          subtitle="Where you are and your CV details"
           color="#10b981"
         />
 
-        <Grid container spacing={3}>
-          {/* Phone Number */}
-          <Grid size={12}>
-            <StyledLabel>Phone Number</StyledLabel>
-            <Controller
-              name="phoneNumber"
-              control={control}
-              render={({ field }) => (
-                <Box sx={{ display: "flex", gap: 1.5 }}>
-                  <TextField
-                    select
-                    defaultValue="+1"
-                    slotProps={{ select: { native: true } }}
-                    size="small"
-                    sx={{
-                      width: 100,
-                      ...textFieldSx,
-                    }}
-                  >
-                    <option value="+1">+1</option>
-                    <option value="+44">+44</option>
-                    <option value="+91">+91</option>
-                    <option value="+49">+49</option>
-                  </TextField>
-                  <TextField
-                    {...field}
-                    placeholder="Enter phone number"
-                    variant="outlined"
-                    fullWidth
-                    size="small"
-                    sx={textFieldSx}
-                  />
-                </Box>
-              )}
-            />
-          </Grid>
-
-          {/* Current Location */}
-          <Grid size={{ xs: 12, md: 6 }}>
-            <StyledLabel required>Country</StyledLabel>
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <FormLabel
+              sx={{
+                mb: 1,
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                color: "#374151",
+                display: "block",
+              }}
+            >
+              Current Location
+            </FormLabel>
             <Controller
               name="currentLocation"
               control={control}
-              render={({ field: { onChange, value } }) => (
-                <Autocomplete
-                  options={countryOptions}
-                  value={value || null}
-                  onChange={(_, newValue) => onChange(newValue || "")}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  placeholder="e.g., San Francisco, CA"
                   size="small"
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder="Select country"
-                      error={Boolean(errors.currentLocation)}
-                      helperText={errors.currentLocation?.message}
-                      sx={textFieldSx}
-                    />
-                  )}
+                  fullWidth
+                  sx={textFieldSx}
                 />
               )}
             />
           </Grid>
 
-          {/* State/Region */}
-          <Grid size={{ xs: 12, md: 6 }}>
-            <StyledLabel>State / Region</StyledLabel>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <FormLabel
+              sx={{
+                mb: 1,
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                color: "#374151",
+                display: "block",
+              }}
+            >
+              State/Region
+            </FormLabel>
             <Controller
               name="stateRegion"
               control={control}
               render={({ field }) => (
                 <TextField
                   {...field}
-                  placeholder="e.g. California"
-                  variant="outlined"
-                  fullWidth
+                  placeholder="e.g., California"
                   size="small"
+                  fullWidth
                   sx={textFieldSx}
                 />
               )}
             />
           </Grid>
 
-          {/* Post Code */}
-          <Grid size={{ xs: 12, md: 6 }}>
-            <StyledLabel>Post Code</StyledLabel>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <FormLabel
+              sx={{
+                mb: 1,
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                color: "#374151",
+                display: "block",
+              }}
+            >
+              Post Code
+            </FormLabel>
             <Controller
               name="postCode"
               control={control}
               render={({ field }) => (
                 <TextField
                   {...field}
-                  placeholder="e.g. 90210"
-                  variant="outlined"
-                  fullWidth
+                  placeholder="e.g., 94102"
                   size="small"
+                  fullWidth
                   sx={textFieldSx}
                 />
               )}
             />
           </Grid>
 
-          {/* LinkedIn */}
-          <Grid size={{ xs: 12, md: 6 }}>
-            <StyledLabel>LinkedIn Profile</StyledLabel>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <FormLabel
+              sx={{
+                mb: 1,
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                color: "#374151",
+                display: "block",
+              }}
+            >
+              CV Link
+            </FormLabel>
             <Controller
-              name="linkedInProfile"
+              name="cvLink"
               control={control}
               render={({ field }) => (
                 <TextField
                   {...field}
-                  placeholder="https://linkedin.com/in/..."
-                  variant="outlined"
-                  fullWidth
+                  placeholder="https://..."
                   size="small"
+                  fullWidth
                   slotProps={{
                     input: {
                       startAdornment: (
-                        <LinkedinLogo size={18} style={{ marginRight: 8, color: "#0a66c2" }} />
+                        <FileText
+                          size={18}
+                          style={{ marginRight: 8, color: "#9ca3af" }}
+                        />
                       ),
                     },
                   }}
@@ -619,7 +487,163 @@ export function CopilotStep3Form({ defaultValues, onNext, onBack }: CopilotStep3
         </Grid>
       </Paper>
 
-      {/* Work Eligibility Section */}
+      {/* Nationality & Eligibility Section */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 3, sm: 4 },
+          borderRadius: "16px",
+          border: "1px solid #e5e7eb",
+          mb: 3,
+        }}
+      >
+        <SectionHeader
+          icon={<IdentificationCard size={22} weight="duotone" />}
+          title="Nationality & Work Eligibility"
+          subtitle="Countries where you can legally work"
+          color="#3b82f6"
+        />
+
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12 }}>
+            <FormLabel
+              sx={{
+                mb: 1,
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                color: "#374151",
+                display: "block",
+              }}
+            >
+              Nationality
+            </FormLabel>
+            <Controller
+              name="nationality"
+              control={control}
+              render={({ field: { onChange, value } }) => (
+                <Autocomplete
+                  multiple
+                  options={countries}
+                  value={value || []}
+                  onChange={(_, newValue) => onChange(newValue)}
+                  loading={loadingCountries}
+                  size="small"
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Select your nationalities"
+                      slotProps={{
+                        input: {
+                          ...params.InputProps,
+                          endAdornment: (
+                            <>
+                              {loadingCountries ? <CircularProgress size={20} /> : null}
+                              {params.InputProps.endAdornment}
+                            </>
+                          ),
+                        },
+                      }}
+                      sx={textFieldSx}
+                    />
+                  )}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => {
+                      const { key, ...tagProps } = getTagProps({ index });
+                      return (
+                        <Chip
+                          label={option}
+                          {...tagProps}
+                          key={key}
+                          size="small"
+                          sx={{
+                            backgroundColor: "#dbeafe",
+                            color: "#1e40af",
+                            fontWeight: 500,
+                            "& .MuiChip-deleteIcon": {
+                              color: "#1e40af",
+                              "&:hover": { color: "#1e3a8a" },
+                            },
+                          }}
+                        />
+                      );
+                    })
+                  }
+                />
+              )}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12 }}>
+            <FormLabel
+              sx={{
+                mb: 1,
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                color: "#374151",
+                display: "block",
+              }}
+            >
+              Eligible Countries
+            </FormLabel>
+            <Controller
+              name="eligibleCountries"
+              control={control}
+              render={({ field: { onChange, value } }) => (
+                <Autocomplete
+                  multiple
+                  options={countries}
+                  value={value || []}
+                  onChange={(_, newValue) => onChange(newValue)}
+                  loading={loadingCountries}
+                  size="small"
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Countries where you can work"
+                      slotProps={{
+                        input: {
+                          ...params.InputProps,
+                          endAdornment: (
+                            <>
+                              {loadingCountries ? <CircularProgress size={20} /> : null}
+                              {params.InputProps.endAdornment}
+                            </>
+                          ),
+                        },
+                      }}
+                      sx={textFieldSx}
+                    />
+                  )}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => {
+                      const { key, ...tagProps } = getTagProps({ index });
+                      return (
+                        <Chip
+                          label={option}
+                          {...tagProps}
+                          key={key}
+                          size="small"
+                          sx={{
+                            backgroundColor: "#dbeafe",
+                            color: "#1e40af",
+                            fontWeight: 500,
+                            "& .MuiChip-deleteIcon": {
+                              color: "#1e40af",
+                              "&:hover": { color: "#1e3a8a" },
+                            },
+                          }}
+                        />
+                      );
+                    })
+                  }
+                />
+              )}
+            />
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Languages Section */}
       <Paper
         elevation={0}
         sx={{
@@ -631,224 +655,76 @@ export function CopilotStep3Form({ defaultValues, onNext, onBack }: CopilotStep3
       >
         <SectionHeader
           icon={<Globe size={22} weight="duotone" />}
-          title="Work Eligibility"
-          subtitle="Countries where you can legally work"
+          title="Languages"
+          subtitle="Languages you speak or want to learn"
           color="#f59e0b"
         />
 
-        <Grid container spacing={3}>
-          {/* Eligible Countries */}
-          <Grid size={12}>
-            <StyledLabel>Countries you're eligible to work in</StyledLabel>
-            <Controller
-              name="eligibleCountries"
-              control={control}
-              render={({ field: { onChange, value } }) => (
-                <Autocomplete
-                  multiple
-                  options={countryOptions}
-                  value={value || []}
-                  onChange={(_, newValue) => onChange(newValue)}
-                  size="small"
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder="Select countries"
-                      sx={textFieldSx}
-                    />
-                  )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        label={option}
-                        {...getTagProps({ index })}
-                        key={option}
-                        size="small"
-                        sx={{
-                          backgroundColor: "#fef3c7",
-                          color: "#b45309",
-                          fontWeight: 500,
-                          "& .MuiChip-deleteIcon": {
-                            color: "#b45309",
-                            "&:hover": { color: "#92400e" },
-                          },
-                        }}
-                      />
-                    ))
-                  }
-                />
-              )}
-            />
-          </Grid>
-
-          {/* Nationality */}
-          <Grid size={{ xs: 12, md: 6 }}>
-            <StyledLabel>Nationality (up to 3)</StyledLabel>
-            <Controller
-              name="nationality"
-              control={control}
-              render={({ field: { onChange, value } }) => (
-                <Autocomplete
-                  multiple
-                  options={countryOptions}
-                  value={value || []}
-                  onChange={(_, newValue) => onChange(newValue.slice(0, 3))}
-                  size="small"
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder="Select nationality"
-                      sx={textFieldSx}
-                    />
-                  )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        label={option}
-                        {...getTagProps({ index })}
-                        key={option}
-                        size="small"
-                        sx={{
-                          backgroundColor: "#ede9fe",
-                          color: "#7c3aed",
-                          fontWeight: 500,
-                        }}
-                      />
-                    ))
-                  }
-                />
-              )}
-            />
-          </Grid>
-
-          {/* Languages */}
-          <Grid size={{ xs: 12, md: 6 }}>
-            <StyledLabel>Languages</StyledLabel>
-            <Controller
-              name="futureLanguages"
-              control={control}
-              render={({ field: { onChange, value } }) => (
-                <Autocomplete
-                  multiple
-                  options={languageOptions}
-                  value={value || []}
-                  onChange={(_, newValue) => onChange(newValue)}
-                  size="small"
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder="Select languages"
-                      sx={textFieldSx}
-                    />
-                  )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        label={option}
-                        {...getTagProps({ index })}
-                        key={option}
-                        size="small"
-                        sx={{
-                          backgroundColor: "#dbeafe",
-                          color: "#1e40af",
-                          fontWeight: 500,
-                        }}
-                      />
-                    ))
-                  }
-                />
-              )}
-            />
-          </Grid>
-        </Grid>
-      </Paper>
-
-      {/* Professional Info Section */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: { xs: 3, sm: 4 },
-          borderRadius: "16px",
-          border: "1px solid #e5e7eb",
-          mb: 3,
-        }}
-      >
-        <SectionHeader
-          icon={<Briefcase size={22} weight="duotone" />}
-          title="Professional Information"
-          subtitle="Your current role and availability"
-          color="#6366f1"
-        />
-
-        <Grid container spacing={3}>
-          {/* Current Job Title */}
-          <Grid size={{ xs: 12, md: 6 }}>
-            <StyledLabel>Current / Previous Job Title</StyledLabel>
-            <Controller
-              name="currentJobTitle"
-              control={control}
-              render={({ field }) => (
+        <FormLabel
+          sx={{
+            mb: 1,
+            fontWeight: 600,
+            fontSize: "0.875rem",
+            color: "#374151",
+            display: "block",
+          }}
+        >
+          Future Languages
+        </FormLabel>
+        <Controller
+          name="futureLanguages"
+          control={control}
+          render={({ field: { onChange, value } }) => (
+            <Autocomplete
+              multiple
+              options={languages}
+              value={value || []}
+              onChange={(_, newValue) => onChange(newValue)}
+              loading={loadingLanguages}
+              size="small"
+              renderInput={(params) => (
                 <TextField
-                  {...field}
-                  placeholder="e.g. Software Engineer"
-                  variant="outlined"
-                  fullWidth
-                  size="small"
+                  {...params}
+                  placeholder="Languages you want to work with"
+                  slotProps={{
+                    input: {
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {loadingLanguages ? <CircularProgress size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    },
+                  }}
                   sx={textFieldSx}
                 />
               )}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => {
+                  const { key, ...tagProps } = getTagProps({ index });
+                  return (
+                    <Chip
+                      label={option}
+                      {...tagProps}
+                      key={key}
+                      size="small"
+                      sx={{
+                        backgroundColor: "#fef3c7",
+                        color: "#b45309",
+                        fontWeight: 500,
+                        "& .MuiChip-deleteIcon": {
+                          color: "#b45309",
+                          "&:hover": { color: "#92400e" },
+                        },
+                      }}
+                    />
+                  );
+                })
+              }
             />
-          </Grid>
-
-          {/* Availability */}
-          <Grid size={{ xs: 12, md: 6 }}>
-            <StyledLabel required>Availability / Notice Period</StyledLabel>
-            <Controller
-              name="availability"
-              control={control}
-              render={({ field }) => (
-                <Box>
-                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                    {availabilityOptions.map((option) => {
-                      const isSelected = field.value === option.value;
-                      return (
-                        <Chip
-                          key={option.value}
-                          label={option.label}
-                          onClick={() => field.onChange(option.value)}
-                          sx={{
-                            borderRadius: "16px",
-                            fontSize: "0.8125rem",
-                            fontWeight: 500,
-                            cursor: "pointer",
-                            transition: "all 0.2s ease",
-                            ...(isSelected
-                              ? {
-                                  backgroundColor: "#6366f1",
-                                  color: "white",
-                                  "&:hover": { backgroundColor: "#4f46e5" },
-                                }
-                              : {
-                                  backgroundColor: "#f9fafb",
-                                  color: "#374151",
-                                  border: "1px solid #e5e7eb",
-                                  "&:hover": { backgroundColor: "#f3f4f6" },
-                                }),
-                          }}
-                        />
-                      );
-                    })}
-                  </Box>
-                  {errors.availability && (
-                    <FormHelperText error sx={{ mt: 0.5 }}>
-                      {errors.availability.message}
-                    </FormHelperText>
-                  )}
-                </Box>
-              )}
-            />
-          </Grid>
-        </Grid>
+          )}
+        />
       </Paper>
 
       {/* Salary Section */}
@@ -863,78 +739,114 @@ export function CopilotStep3Form({ defaultValues, onNext, onBack }: CopilotStep3
       >
         <SectionHeader
           icon={<CurrencyDollar size={22} weight="duotone" />}
-          title="Salary Information"
-          subtitle="Your current and expected compensation"
+          title="Salary Expectations"
+          subtitle="Your current and expected salary"
           color="#10b981"
         />
 
-        <Grid container spacing={3}>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <StyledLabel>Current Yearly Salary</StyledLabel>
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <FormLabel
+              sx={{
+                mb: 1,
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                color: "#374151",
+                display: "block",
+              }}
+            >
+              Current Salary
+            </FormLabel>
             <Controller
               name="currentSalary"
               control={control}
               render={({ field }) => (
                 <TextField
                   {...field}
-                  placeholder="e.g. $80,000"
-                  variant="outlined"
-                  fullWidth
+                  placeholder="e.g., $120,000"
                   size="small"
+                  fullWidth
                   sx={textFieldSx}
                 />
               )}
             />
           </Grid>
 
-          <Grid size={{ xs: 12, md: 6 }}>
-            <StyledLabel>Expected Yearly Salary</StyledLabel>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <FormLabel
+              sx={{
+                mb: 1,
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                color: "#374151",
+                display: "block",
+              }}
+            >
+              Expected Salary
+            </FormLabel>
             <Controller
               name="expectedSalary"
               control={control}
               render={({ field }) => (
                 <TextField
                   {...field}
-                  placeholder="e.g. $100,000"
-                  variant="outlined"
-                  fullWidth
+                  placeholder="e.g., $140,000"
                   size="small"
+                  fullWidth
                   sx={textFieldSx}
                 />
               )}
             />
           </Grid>
 
-          <Grid size={{ xs: 12, md: 6 }}>
-            <StyledLabel>Expected Salary (Full-time)</StyledLabel>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <FormLabel
+              sx={{
+                mb: 1,
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                color: "#374151",
+                display: "block",
+              }}
+            >
+              Expected Salary (Full-Time)
+            </FormLabel>
             <Controller
               name="expectedSalaryFullTime"
               control={control}
               render={({ field }) => (
                 <TextField
                   {...field}
-                  placeholder="e.g. $100,000"
-                  variant="outlined"
-                  fullWidth
+                  placeholder="e.g., $140,000/year"
                   size="small"
+                  fullWidth
                   sx={textFieldSx}
                 />
               )}
             />
           </Grid>
 
-          <Grid size={{ xs: 12, md: 6 }}>
-            <StyledLabel>Expected Salary (Part-time)</StyledLabel>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <FormLabel
+              sx={{
+                mb: 1,
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                color: "#374151",
+                display: "block",
+              }}
+            >
+              Expected Salary (Part-Time)
+            </FormLabel>
             <Controller
               name="expectedSalaryPartTime"
               control={control}
               render={({ field }) => (
                 <TextField
                   {...field}
-                  placeholder="e.g. $50/hour"
-                  variant="outlined"
-                  fullWidth
+                  placeholder="e.g., $70/hour"
                   size="small"
+                  fullWidth
                   sx={textFieldSx}
                 />
               )}
@@ -943,132 +855,220 @@ export function CopilotStep3Form({ defaultValues, onNext, onBack }: CopilotStep3
         </Grid>
       </Paper>
 
-      {/* Experience Summary Section */}
+      {/* Professional Links Section */}
       <Paper
         elevation={0}
         sx={{
           p: { xs: 3, sm: 4 },
           borderRadius: "16px",
           border: "1px solid #e5e7eb",
-          mb: 4,
+          mb: 3,
         }}
       >
         <SectionHeader
-          icon={<User size={22} weight="duotone" />}
-          title="About You"
-          subtitle="Tell employers about your experience"
-          color="#8b5cf6"
+          icon={<LinkedinLogo size={22} weight="duotone" />}
+          title="Professional Links"
+          subtitle="Your LinkedIn and other profiles"
+          color="#0a66c2"
         />
 
-        {/* Experience Summary */}
-        <Box sx={{ mb: 3 }}>
-          <StyledLabel required>Experience Summary</StyledLabel>
-          <Controller
-            name="experienceSummary"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                placeholder="Brief summary of your professional experience, skills, and achievements..."
-                variant="outlined"
-                fullWidth
-                multiline
-                rows={4}
-                error={Boolean(errors.experienceSummary)}
-                helperText={errors.experienceSummary?.message}
-                sx={textFieldSx}
-              />
-            )}
-          />
-          <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 0.5 }}>
-            <Typography sx={{ fontSize: "0.75rem", color: "#9ca3af" }}>
-              {experienceSummary?.length || 0}/500
-            </Typography>
-          </Box>
-        </Box>
+        <FormLabel
+          sx={{
+            mb: 1,
+            fontWeight: 600,
+            fontSize: "0.875rem",
+            color: "#374151",
+            display: "block",
+          }}
+        >
+          LinkedIn Profile
+        </FormLabel>
+        <Controller
+          name="linkedInProfile"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              placeholder="https://linkedin.com/in/..."
+              size="small"
+              fullWidth
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <LinkedinLogo
+                      size={18}
+                      style={{ marginRight: 8, color: "#0a66c2" }}
+                    />
+                  ),
+                },
+              }}
+              sx={textFieldSx}
+            />
+          )}
+        />
+      </Paper>
 
-        {/* Additional Screening Questions */}
-        <Box>
-          <StyledLabel>Additional Information</StyledLabel>
-          <Typography sx={{ fontSize: "0.8125rem", color: "#6b7280", mb: 1.5 }}>
-            Any other relevant context to help answer employer questions
-          </Typography>
-          <Controller
-            name="screeningQuestions"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                placeholder="e.g. Certifications, special skills, or preferences..."
-                variant="outlined"
-                fullWidth
-                multiline
-                rows={3}
-                sx={textFieldSx}
-              />
-            )}
-          />
-        </Box>
+      {/* Additional Information Section */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 3, sm: 4 },
+          borderRadius: "16px",
+          border: "1px solid #e5e7eb",
+          mb: 3,
+        }}
+      >
+        <SectionHeader
+          icon={<Briefcase size={22} weight="duotone" />}
+          title="Additional Information"
+          subtitle="Cover letter, experience, and screening questions"
+          color="#ec4899"
+        />
+
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12 }}>
+            <FormLabel
+              sx={{
+                mb: 1,
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                color: "#374151",
+                display: "block",
+              }}
+            >
+              Cover Letter
+            </FormLabel>
+            <Controller
+              name="coverLetter"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  placeholder="Write your cover letter template..."
+                  size="small"
+                  fullWidth
+                  multiline
+                  rows={4}
+                  sx={textFieldSx}
+                />
+              )}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12 }}>
+            <FormLabel
+              sx={{
+                mb: 1,
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                color: "#374151",
+                display: "block",
+              }}
+            >
+              Experience Summary
+            </FormLabel>
+            <Controller
+              name="experienceSummary"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  placeholder="Brief summary of your professional experience..."
+                  size="small"
+                  fullWidth
+                  multiline
+                  rows={4}
+                  sx={textFieldSx}
+                />
+              )}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12 }}>
+            <FormLabel
+              sx={{
+                mb: 1,
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                color: "#374151",
+                display: "block",
+              }}
+            >
+              Screening Questions Template
+            </FormLabel>
+            <Controller
+              name="screeningQuestions"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  placeholder="Default answers for common screening questions..."
+                  size="small"
+                  fullWidth
+                  multiline
+                  rows={3}
+                  sx={textFieldSx}
+                />
+              )}
+            />
+          </Grid>
+        </Grid>
       </Paper>
 
       {/* Navigation Buttons */}
-      <Box sx={{ display: "flex", gap: 2 }}>
-        <Button
-          type="button"
-          variant="outlined"
-          size="large"
-          onClick={onBack}
-          disabled={isUploading}
-          startIcon={<ArrowLeft size={20} weight="bold" />}
-          sx={{
-            borderRadius: "12px",
-            py: 1.5,
-            px: 3,
-            textTransform: "none",
-            fontSize: "1rem",
-            fontWeight: 600,
-            border: "2px solid #e5e7eb",
-            color: "#374151",
-            "&:hover": {
-              borderColor: "#d1d5db",
-              backgroundColor: "#f9fafb",
-            },
-          }}
-        >
-          Back
-        </Button>
-
-        <Button
-          type="submit"
-          variant="contained"
-          size="large"
-          fullWidth
-          disabled={isUploading}
-          endIcon={<ArrowRight size={20} weight="bold" />}
-          sx={{
-            borderRadius: "12px",
-            py: 1.5,
-            textTransform: "none",
-            fontSize: "1rem",
-            fontWeight: 600,
-            background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)",
-            boxShadow: "0 4px 14px rgba(124, 58, 237, 0.35)",
-            "&:hover": {
-              background: "linear-gradient(135deg, #6d28d9 0%, #9333ea 100%)",
-              boxShadow: "0 6px 20px rgba(124, 58, 237, 0.45)",
-              transform: "translateY(-1px)",
-            },
-            "&:disabled": {
-              background: "#e5e7eb",
-              color: "#9ca3af",
-              boxShadow: "none",
-            },
-            transition: "all 0.2s ease",
-          }}
-        >
-          Next: Configuration
-        </Button>
-      </Box>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <Button
+            type="button"
+            onClick={onBack}
+            variant="outlined"
+            size="large"
+            fullWidth
+            startIcon={<ArrowLeft size={20} weight="bold" />}
+            sx={{
+              borderRadius: "12px",
+              padding: "14px 32px",
+              textTransform: "none",
+              fontSize: "1rem",
+              fontWeight: 600,
+              borderColor: "#e5e7eb",
+              color: "#374151",
+              "&:hover": {
+                borderColor: "#d1d5db",
+                backgroundColor: "#f9fafb",
+              },
+            }}
+          >
+            Back
+          </Button>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <Button
+            type="submit"
+            variant="contained"
+            size="large"
+            fullWidth
+            endIcon={<ArrowRight size={20} weight="bold" />}
+            sx={{
+              borderRadius: "12px",
+              padding: "14px 32px",
+              textTransform: "none",
+              fontSize: "1rem",
+              fontWeight: 600,
+              background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)",
+              boxShadow: "0 4px 14px rgba(124, 58, 237, 0.35)",
+              "&:hover": {
+                background: "linear-gradient(135deg, #6d28d9 0%, #9333ea 100%)",
+                boxShadow: "0 6px 20px rgba(124, 58, 237, 0.45)",
+                transform: "translateY(-1px)",
+              },
+              transition: "all 0.2s ease",
+            }}
+          >
+            Next: Configuration
+          </Button>
+        </Grid>
+      </Grid>
     </Box>
   );
 }

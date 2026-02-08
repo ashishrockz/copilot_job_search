@@ -13,6 +13,9 @@ import {
   FormHelperText,
   Paper,
   Grid,
+  CircularProgress,
+  Switch,
+  FormControlLabel,
 } from "@mui/material";
 import {
   MapPinIcon as MapPin,
@@ -26,18 +29,25 @@ import {
   ClockCounterClockwiseIcon as ClockCounterClockwise,
 } from "@phosphor-icons/react";
 import { Step1Data } from "@/context/copilot-form-context";
+import { getCountries, searchJobTitles } from "@/lib/reference-data.service";
+import { toast } from "sonner";
 
 // Zod validation schema
 const step1Schema = zod.object({
-  workLocationType: zod.enum(["remote", "onsite", "hybrid"], {
-    message: "Please select a work location type",
-  }),
+  enableRemote: zod.boolean(),
+  enableOnsite: zod.boolean(),
   remoteLocations: zod.array(zod.string()).optional(),
   onsiteLocations: zod.array(zod.string()).optional(),
   jobTypes: zod.array(zod.string()).min(1, { message: "Select at least one job type" }),
   searchMethod: zod.enum(["keywords", "favorite", "applied"]),
   jobTitles: zod.array(zod.string()).optional(),
 }).refine(
+  (data) => data.enableRemote || data.enableOnsite,
+  {
+    message: "Please enable at least one work location type",
+    path: ["enableRemote"],
+  }
+).refine(
   (data) => {
     if (data.searchMethod === "keywords") {
       return data.jobTitles && data.jobTitles.length > 0;
@@ -56,19 +66,6 @@ interface CopilotStep1FormProps {
   defaultValues?: Partial<Step1Data>;
   onNext: (values: Step1FormValues) => void;
 }
-
-const locationOptions = [
-  "Worldwide",
-  "United States",
-  "United Kingdom",
-  "Canada",
-  "Germany",
-  "France",
-  "Australia",
-  "Netherlands",
-  "Singapore",
-  "India",
-];
 
 const jobTypeOptions = [
   { value: "fulltime", label: "Full-time" },
@@ -180,7 +177,8 @@ export function CopilotStep1Form({ defaultValues, onNext }: CopilotStep1FormProp
     formState: { errors },
   } = useForm<Step1FormValues>({
     defaultValues: {
-      workLocationType: defaultValues?.workLocationType || undefined,
+      enableRemote: defaultValues?.enableRemote || false,
+      enableOnsite: defaultValues?.enableOnsite || false,
       remoteLocations: defaultValues?.remoteLocations || [],
       onsiteLocations: defaultValues?.onsiteLocations || [],
       jobTypes: defaultValues?.jobTypes || [],
@@ -190,8 +188,59 @@ export function CopilotStep1Form({ defaultValues, onNext }: CopilotStep1FormProp
     resolver: zodResolver(step1Schema),
   });
 
-  const workLocationType = watch("workLocationType");
+  const enableRemote = watch("enableRemote");
+  const enableOnsite = watch("enableOnsite");
   const searchMethod = watch("searchMethod");
+
+  // State for API data
+  const [countries, setCountries] = React.useState<string[]>([]);
+  const [jobTitleOptions, setJobTitleOptions] = React.useState<string[]>([]);
+  const [loadingCountries, setLoadingCountries] = React.useState(false);
+  const [loadingJobTitles, setLoadingJobTitles] = React.useState(false);
+
+  // Fetch countries on mount
+  React.useEffect(() => {
+    const fetchCountries = async () => {
+      setLoadingCountries(true);
+      try {
+        const response = await getCountries();
+        if (response.success && response.data) {
+          const countryNames = response.data.map((c) => c.name);
+          setCountries(["Worldwide", ...countryNames]);
+        } else {
+          toast.error("Failed to load countries");
+        }
+      } catch (error) {
+        console.error("Error loading countries:", error);
+        toast.error("Failed to load countries");
+      } finally {
+        setLoadingCountries(false);
+      }
+    };
+
+    fetchCountries();
+  }, []);
+
+  // Debounced job title search
+  const handleJobTitleSearch = React.useCallback(
+    async (searchQuery: string) => {
+      if (!searchQuery || searchQuery.length < 2) return;
+
+      setLoadingJobTitles(true);
+      try {
+        const response = await searchJobTitles({ query: searchQuery, limit: 20 });
+        if (response.success && response.data) {
+          const titles = response.data.map((jt) => jt.title);
+          setJobTitleOptions(titles);
+        }
+      } catch (error) {
+        console.error("Error searching job titles:", error);
+      } finally {
+        setLoadingJobTitles(false);
+      }
+    },
+    []
+  );
 
   return (
     <Box
@@ -233,193 +282,255 @@ export function CopilotStep1Form({ defaultValues, onNext }: CopilotStep1FormProp
         <SectionHeader
           icon={<Globe size={22} weight="duotone" />}
           title="Work Location"
-          subtitle="Are you looking for remote, on-site, or hybrid positions?"
+          subtitle="Enable the work location types you're interested in"
           color="#7c3aed"
         />
 
-        <Controller
-          name="workLocationType"
-          control={control}
-          render={({ field }) => (
-            <Box>
-              <Grid container spacing={2}>
-                {[
-                  {
-                    value: "remote",
-                    label: "Remote Jobs",
-                    description: "Work from anywhere",
-                    icon: <Globe size={24} weight="duotone" />,
-                  },
-                  {
-                    value: "onsite",
-                    label: "On-site / Hybrid",
-                    description: "Office-based positions",
-                    icon: <Buildings size={24} weight="duotone" />,
-                  },
-                ].map((option) => (
-                  <Grid size={{ xs: 12, sm: 6 }} key={option.value}>
-                    <Box
-                      onClick={() => field.onChange(option.value)}
+        {/* Remote Jobs Toggle */}
+        <Box sx={{ mb: 3 }}>
+          <Controller
+            name="enableRemote"
+            control={control}
+            render={({ field }) => (
+              <Box>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={field.value}
+                      onChange={field.onChange}
                       sx={{
-                        p: 2.5,
-                        borderRadius: "12px",
-                        border: "2px solid",
-                        borderColor: field.value === option.value ? "#7c3aed" : "#e5e7eb",
-                        backgroundColor: field.value === option.value ? "#f5f3ff" : "#fff",
-                        cursor: "pointer",
-                        transition: "all 0.2s ease",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 2,
-                        "&:hover": {
-                          borderColor: field.value === option.value ? "#7c3aed" : "#d1d5db",
-                          backgroundColor: field.value === option.value ? "#f5f3ff" : "#f9fafb",
-                        },
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: 48,
-                          height: 48,
-                          borderRadius: "12px",
-                          backgroundColor: field.value === option.value ? "#7c3aed" : "#f3f4f6",
-                          color: field.value === option.value ? "#fff" : "#6b7280",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          transition: "all 0.2s ease",
-                        }}
-                      >
-                        {option.icon}
-                      </Box>
-                      <Box sx={{ flex: 1 }}>
-                        <Typography
-                          sx={{
-                            fontWeight: 600,
-                            fontSize: "0.9375rem",
-                            color: field.value === option.value ? "#7c3aed" : "#374151",
-                          }}
-                        >
-                          {option.label}
-                        </Typography>
-                        <Typography
-                          sx={{
-                            fontSize: "0.8125rem",
-                            color: "#6b7280",
-                          }}
-                        >
-                          {option.description}
-                        </Typography>
-                      </Box>
-                      <Box
-                        sx={{
-                          width: 20,
-                          height: 20,
-                          borderRadius: "50%",
-                          border: "2px solid",
-                          borderColor: field.value === option.value ? "#7c3aed" : "#d1d5db",
-                          backgroundColor: field.value === option.value ? "#7c3aed" : "transparent",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        {field.value === option.value && (
-                          <Box
-                            sx={{
-                              width: 8,
-                              height: 8,
-                              borderRadius: "50%",
-                              backgroundColor: "#fff",
-                            }}
-                          />
-                        )}
-                      </Box>
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
-              {errors.workLocationType && (
-                <FormHelperText error sx={{ mt: 1 }}>
-                  {errors.workLocationType.message}
-                </FormHelperText>
-              )}
-            </Box>
-          )}
-        />
-
-        {/* Location Autocomplete - Show based on selection */}
-        {workLocationType && (
-          <Box sx={{ mt: 3 }}>
-            <FormLabel
-              sx={{
-                mb: 1,
-                fontWeight: 600,
-                fontSize: "0.875rem",
-                color: "#374151",
-                display: "block",
-              }}
-            >
-              {workLocationType === "remote" ? "Preferred Regions" : "Preferred Locations"}
-            </FormLabel>
-            <Controller
-              name={workLocationType === "remote" ? "remoteLocations" : "onsiteLocations"}
-              control={control}
-              render={({ field: { onChange, value } }) => (
-                <Autocomplete
-                  multiple
-                  options={locationOptions}
-                  value={value || []}
-                  onChange={(_, newValue) => onChange(newValue)}
-                  size="small"
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder={
-                        workLocationType === "remote"
-                          ? "Select regions (e.g., Worldwide, Europe)"
-                          : "Select locations"
-                      }
-                      slotProps={{
-                        input: {
-                          ...params.InputProps,
-                          startAdornment: (
-                            <>
-                              <MapPin
-                                size={18}
-                                style={{ marginLeft: 8, marginRight: 4, color: "#9ca3af" }}
-                              />
-                              {params.InputProps.startAdornment}
-                            </>
-                          ),
-                        },
-                      }}
-                      sx={textFieldSx}
-                    />
-                  )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        label={option}
-                        {...getTagProps({ index })}
-                        key={option}
-                        size="small"
-                        sx={{
-                          backgroundColor: "#ede9fe",
+                        "& .MuiSwitch-switchBase.Mui-checked": {
                           color: "#7c3aed",
-                          fontWeight: 500,
-                          "& .MuiChip-deleteIcon": {
-                            color: "#7c3aed",
-                            "&:hover": { color: "#6d28d9" },
+                        },
+                        "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                          backgroundColor: "#7c3aed",
+                        },
+                      }}
+                    />
+                  }
+                  label={
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Globe size={20} weight="duotone" style={{ color: "#7c3aed" }} />
+                      <Typography sx={{ fontWeight: 600, fontSize: "0.9375rem", color: "#374151" }}>
+                        Remote Jobs
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{ ml: 0 }}
+                />
+              </Box>
+            )}
+          />
+
+          {/* Remote Locations - Show when enabled */}
+          {enableRemote && (
+            <Box sx={{ mt: 2, ml: 4 }}>
+              <FormLabel
+                sx={{
+                  mb: 1,
+                  fontWeight: 600,
+                  fontSize: "0.875rem",
+                  color: "#374151",
+                  display: "block",
+                }}
+              >
+                Preferred Regions (Optional)
+              </FormLabel>
+              <Controller
+                name="remoteLocations"
+                control={control}
+                render={({ field: { onChange, value } }) => (
+                  <Autocomplete
+                    multiple
+                    options={countries}
+                    value={value || []}
+                    onChange={(_, newValue) => onChange(newValue)}
+                    loading={loadingCountries}
+                    size="small"
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder="Select regions (e.g., Worldwide, Europe)"
+                        slotProps={{
+                          input: {
+                            ...params.InputProps,
+                            startAdornment: (
+                              <>
+                                <MapPin
+                                  size={18}
+                                  style={{ marginLeft: 8, marginRight: 4, color: "#9ca3af" }}
+                                />
+                                {params.InputProps.startAdornment}
+                              </>
+                            ),
+                            endAdornment: (
+                              <>
+                                {loadingCountries ? <CircularProgress size={20} /> : null}
+                                {params.InputProps.endAdornment}
+                              </>
+                            ),
                           },
                         }}
+                        sx={textFieldSx}
                       />
-                    ))
+                    )}
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => {
+                        const { key, ...tagProps } = getTagProps({ index });
+                        return (
+                          <Chip
+                            label={option}
+                            {...tagProps}
+                            key={key}
+                            size="small"
+                            sx={{
+                              backgroundColor: "#ede9fe",
+                              color: "#7c3aed",
+                              fontWeight: 500,
+                              "& .MuiChip-deleteIcon": {
+                                color: "#7c3aed",
+                                "&:hover": { color: "#6d28d9" },
+                              },
+                            }}
+                          />
+                        );
+                      })
+                    }
+                  />
+                )}
+              />
+            </Box>
+          )}
+        </Box>
+
+        {/* On-site / Hybrid Toggle */}
+        <Box>
+          <Controller
+            name="enableOnsite"
+            control={control}
+            render={({ field }) => (
+              <Box>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={field.value}
+                      onChange={field.onChange}
+                      sx={{
+                        "& .MuiSwitch-switchBase.Mui-checked": {
+                          color: "#7c3aed",
+                        },
+                        "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                          backgroundColor: "#7c3aed",
+                        },
+                      }}
+                    />
                   }
+                  label={
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Buildings size={20} weight="duotone" style={{ color: "#7c3aed" }} />
+                      <Typography sx={{ fontWeight: 600, fontSize: "0.9375rem", color: "#374151" }}>
+                        On-site / Hybrid
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{ ml: 0 }}
                 />
-              )}
-            />
-          </Box>
+              </Box>
+            )}
+          />
+
+          {/* Onsite Locations - Show when enabled */}
+          {enableOnsite && (
+            <Box sx={{ mt: 2, ml: 4 }}>
+              <FormLabel
+                sx={{
+                  mb: 1,
+                  fontWeight: 600,
+                  fontSize: "0.875rem",
+                  color: "#374151",
+                  display: "block",
+                }}
+              >
+                Preferred Locations
+              </FormLabel>
+              <Typography
+                variant="body2"
+                sx={{ mb: 1.5, color: "#6b7280", fontSize: "0.8125rem" }}
+              >
+                Please select at least one location
+              </Typography>
+              <Controller
+                name="onsiteLocations"
+                control={control}
+                render={({ field: { onChange, value } }) => (
+                  <Autocomplete
+                    multiple
+                    options={countries}
+                    value={value || []}
+                    onChange={(_, newValue) => onChange(newValue)}
+                    loading={loadingCountries}
+                    size="small"
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder="Select locations"
+                        slotProps={{
+                          input: {
+                            ...params.InputProps,
+                            startAdornment: (
+                              <>
+                                <MapPin
+                                  size={18}
+                                  style={{ marginLeft: 8, marginRight: 4, color: "#9ca3af" }}
+                                />
+                                {params.InputProps.startAdornment}
+                              </>
+                            ),
+                            endAdornment: (
+                              <>
+                                {loadingCountries ? <CircularProgress size={20} /> : null}
+                                {params.InputProps.endAdornment}
+                              </>
+                            ),
+                          },
+                        }}
+                        sx={textFieldSx}
+                      />
+                    )}
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => {
+                        const { key, ...tagProps } = getTagProps({ index });
+                        return (
+                          <Chip
+                            label={option}
+                            {...tagProps}
+                            key={key}
+                            size="small"
+                            sx={{
+                              backgroundColor: "#ede9fe",
+                              color: "#7c3aed",
+                              fontWeight: 500,
+                              "& .MuiChip-deleteIcon": {
+                                color: "#7c3aed",
+                                "&:hover": { color: "#6d28d9" },
+                              },
+                            }}
+                          />
+                        );
+                      })
+                    }
+                  />
+                )}
+              />
+            </Box>
+          )}
+        </Box>
+
+        {/* Error Message - Show if neither is enabled */}
+        {errors.enableRemote && (
+          <FormHelperText error sx={{ mt: 2 }}>
+            {errors.enableRemote.message}
+          </FormHelperText>
         )}
       </Paper>
 
@@ -598,13 +709,17 @@ export function CopilotStep1Form({ defaultValues, onNext }: CopilotStep1FormProp
                   <Autocomplete
                     multiple
                     freeSolo
-                    options={[]}
+                    options={jobTitleOptions}
                     value={value || []}
                     onChange={(_, newValue) => {
                       if (newValue.length <= 5) {
                         onChange(newValue);
                       }
                     }}
+                    onInputChange={(_, newInputValue) => {
+                      handleJobTitleSearch(newInputValue);
+                    }}
+                    loading={loadingJobTitles}
                     size="small"
                     renderInput={(params) => (
                       <TextField
@@ -612,27 +727,41 @@ export function CopilotStep1Form({ defaultValues, onNext }: CopilotStep1FormProp
                         placeholder="e.g. Software Engineer, Product Manager"
                         error={Boolean(errors.jobTitles)}
                         helperText={errors.jobTitles?.message}
+                        slotProps={{
+                          input: {
+                            ...params.InputProps,
+                            endAdornment: (
+                              <>
+                                {loadingJobTitles ? <CircularProgress size={20} /> : null}
+                                {params.InputProps.endAdornment}
+                              </>
+                            ),
+                          },
+                        }}
                         sx={textFieldSx}
                       />
                     )}
                     renderTags={(value, getTagProps) =>
-                      value.map((option, index) => (
-                        <Chip
-                          label={option}
-                          {...getTagProps({ index })}
-                          key={option}
-                          size="small"
-                          sx={{
-                            backgroundColor: "#fef3c7",
-                            color: "#b45309",
-                            fontWeight: 500,
-                            "& .MuiChip-deleteIcon": {
+                      value.map((option, index) => {
+                        const { key, ...tagProps } = getTagProps({ index });
+                        return (
+                          <Chip
+                            label={option}
+                            {...tagProps}
+                            key={key}
+                            size="small"
+                            sx={{
+                              backgroundColor: "#fef3c7",
                               color: "#b45309",
-                              "&:hover": { color: "#92400e" },
-                            },
-                          }}
-                        />
-                      ))
+                              fontWeight: 500,
+                              "& .MuiChip-deleteIcon": {
+                                color: "#b45309",
+                                "&:hover": { color: "#92400e" },
+                              },
+                            }}
+                          />
+                        );
+                      })
                     }
                   />
 

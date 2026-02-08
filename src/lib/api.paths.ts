@@ -10,6 +10,7 @@ export const apiUrlPaths = {
   },
   copilot: {
     list: (): string => `/copilots`,
+    create: (): string => `/copilot`,
     getById: (copilotId: number): string => `/copilot/${copilotId}`,
     update: (copilotId: number): string => `/copilot/${copilotId}`,
     delete: (copilotId: number): string => `/copilot/${copilotId}`,
@@ -18,5 +19,20 @@ export const apiUrlPaths = {
     matchedJobs: (copilotId: number): string => `/copilot/${copilotId}/matched-jobs`,
     applications: (copilotId: number): string => `/copilot/${copilotId}/applications`,
     cancel: (copilotId: number): string => `/copilot/${copilotId}/cancel`,
+  },
+  jobTitles: {
+    list: (): string => `/job-titles`,
+    search: (query: string): string => `/job-titles/search?q=${encodeURIComponent(query)}`,
+  },
+  location: {
+    countries: (): string => `/location/countries`,
+    states: (countryCode: string): string => `/location/states/${countryCode}`,
+    hierarchy: (): string => `/location/hierarchy`,
+  },
+  timezones: {
+    list: (): string => `/timezones`,
+  },
+  languages: {
+    list: (): string => `/languages`,
   },
 };

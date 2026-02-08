@@ -1,3 +1,5 @@
+import { CopilotFormData } from "@/context/copilot-form-context";
+import { CreateCopilotRequestAdapter } from "@/models/copilot-request.adapter";
 import {
   CopilotAdapter,
   CopilotStatusAdapter,
@@ -7,22 +9,20 @@ import {
   CancelCopilotResultAdapter,
 } from "@/models/copilot.adapter";
 import {
-  CopilotsResponse,
-  CopilotResponse,
-  CopilotStatusResponse,
-  MatchedJobsResponse,
-  CopilotApplicationsResponse,
-  TriggerCopilotResponse,
-  CancelCopilotResponse,
-  DeleteCopilotResponse,
-  UpdateCopilotRequest,
+  Copilot,
+  CopilotStatus,
+  MatchedJob,
+  CopilotApplication,
+  TriggerCopilotResult,
+  CancelCopilotResult,
 } from "@/types/copilot";
 import { apiUrlPaths } from "./api.paths";
 import { axiosInstances } from "./networkInstance";
 
 /**
- * Adapter instances (reuse – best practice)
+ * Adapter instances
  */
+const requestAdapter = new CreateCopilotRequestAdapter();
 const copilotAdapter = new CopilotAdapter();
 const copilotStatusAdapter = new CopilotStatusAdapter();
 const matchedJobAdapter = new MatchedJobAdapter();
@@ -31,17 +31,65 @@ const triggerCopilotResultAdapter = new TriggerCopilotResultAdapter();
 const cancelCopilotResultAdapter = new CancelCopilotResultAdapter();
 
 /**
- * Get all copilots for the authenticated user
+ * Create a new copilot
  */
-export const getCopilots = async (): Promise<CopilotsResponse> => {
+export const createCopilot = async (
+  formData: CopilotFormData
+): Promise<{ success: boolean; data?: Copilot; message?: string }> => {
+  try {
+    // Validate form data
+    const validationErrors = requestAdapter.validate(formData);
+    if (validationErrors.length > 0) {
+      return {
+        success: false,
+        message: validationErrors.join(", "),
+      };
+    }
+
+    // Transform to API request format
+    const apiRequest = requestAdapter.toApiRequest(formData);
+
+    // Make API call
+    const url = apiUrlPaths.copilot.create();
+    const response = await axiosInstances.post(url, apiRequest);
+
+    // Adapt response
+    const copilot = copilotAdapter.adapt(response.data);
+
+    return {
+      success: true,
+      data: copilot,
+    };
+  } catch (error: any) {
+    console.error("Error creating copilot:", error);
+
+    return {
+      success: false,
+      message:
+        error?.response?.data?.detail ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to create copilot",
+    };
+  }
+};
+
+/**
+ * Get all copilots
+ */
+export const getCopilots = async (): Promise<{
+  success: boolean;
+  data?: Copilot[];
+  message?: string;
+}> => {
   try {
     const url = apiUrlPaths.copilot.list();
     const response = await axiosInstances.get(url);
 
     const data = Array.isArray(response?.data)
       ? response.data.map((item: any) => copilotAdapter.adapt(item))
-      : Array.isArray(response?.data?.copilots)
-        ? response.data.copilots.map((item: any) => copilotAdapter.adapt(item))
+      : Array.isArray(response?.data?.data)
+        ? response.data.data.map((item: any) => copilotAdapter.adapt(item))
         : [];
 
     return { success: true, data };
@@ -54,26 +102,24 @@ export const getCopilots = async (): Promise<CopilotsResponse> => {
         error?.response?.data?.detail ||
         error?.response?.data?.message ||
         error?.message ||
-        "Something went wrong",
+        "Failed to fetch copilots",
     };
   }
 };
 
 /**
- * Get a specific copilot by ID
+ * Get copilot by ID
  */
 export const getCopilotById = async (
   copilotId: number
-): Promise<CopilotResponse> => {
+): Promise<{ success: boolean; data?: Copilot; message?: string }> => {
   try {
     const url = apiUrlPaths.copilot.getById(copilotId);
     const response = await axiosInstances.get(url);
 
-    const data = copilotAdapter.adapt(
-      response?.data?.data || response?.data
-    );
+    const copilot = copilotAdapter.adapt(response.data);
 
-    return { success: true, data };
+    return { success: true, data: copilot };
   } catch (error: any) {
     console.error("Error fetching copilot:", error);
 
@@ -83,27 +129,42 @@ export const getCopilotById = async (
         error?.response?.data?.detail ||
         error?.response?.data?.message ||
         error?.message ||
-        "Something went wrong",
+        "Failed to fetch copilot",
     };
   }
 };
 
 /**
- * Update a specific copilot (partial updates supported)
+ * Update copilot
  */
 export const updateCopilot = async (
   copilotId: number,
-  data: UpdateCopilotRequest
-): Promise<CopilotResponse> => {
+  formData: CopilotFormData
+): Promise<{ success: boolean; data?: Copilot; message?: string }> => {
   try {
+    // Validate form data
+    const validationErrors = requestAdapter.validate(formData);
+    if (validationErrors.length > 0) {
+      return {
+        success: false,
+        message: validationErrors.join(", "),
+      };
+    }
+
+    // Transform to API request format
+    const apiRequest = requestAdapter.toApiRequest(formData);
+
+    // Make API call
     const url = apiUrlPaths.copilot.update(copilotId);
-    const response = await axiosInstances.put(url, data);
+    const response = await axiosInstances.put(url, apiRequest);
 
-    const adaptedData = copilotAdapter.adapt(
-      response?.data?.data || response?.data
-    );
+    // Adapt response
+    const copilot = copilotAdapter.adapt(response.data);
 
-    return { success: true, data: adaptedData };
+    return {
+      success: true,
+      data: copilot,
+    };
   } catch (error: any) {
     console.error("Error updating copilot:", error);
 
@@ -113,17 +174,17 @@ export const updateCopilot = async (
         error?.response?.data?.detail ||
         error?.response?.data?.message ||
         error?.message ||
-        "Something went wrong",
+        "Failed to update copilot",
     };
   }
 };
 
 /**
- * Delete a copilot
+ * Delete copilot
  */
 export const deleteCopilot = async (
   copilotId: number
-): Promise<DeleteCopilotResponse> => {
+): Promise<{ success: boolean; message?: string }> => {
   try {
     const url = apiUrlPaths.copilot.delete(copilotId);
     await axiosInstances.delete(url);
@@ -138,17 +199,17 @@ export const deleteCopilot = async (
         error?.response?.data?.detail ||
         error?.response?.data?.message ||
         error?.message ||
-        "Something went wrong",
+        "Failed to delete copilot",
     };
   }
 };
 
 /**
- * Manually trigger a copilot to run immediately
+ * Trigger copilot to run
  */
 export const triggerCopilot = async (
   copilotId: number
-): Promise<TriggerCopilotResponse> => {
+): Promise<{ success: boolean; data?: TriggerCopilotResult; message?: string }> => {
   try {
     const url = apiUrlPaths.copilot.trigger(copilotId);
     const response = await axiosInstances.post(url);
@@ -167,17 +228,17 @@ export const triggerCopilot = async (
         error?.response?.data?.detail ||
         error?.response?.data?.message ||
         error?.message ||
-        "Something went wrong",
+        "Failed to trigger copilot",
     };
   }
 };
 
 /**
- * Get copilot status, statistics, and run details
+ * Get copilot status
  */
 export const getCopilotStatus = async (
   copilotId: number
-): Promise<CopilotStatusResponse> => {
+): Promise<{ success: boolean; data?: CopilotStatus; message?: string }> => {
   try {
     const url = apiUrlPaths.copilot.status(copilotId);
     const response = await axiosInstances.get(url);
@@ -196,17 +257,17 @@ export const getCopilotStatus = async (
         error?.response?.data?.detail ||
         error?.response?.data?.message ||
         error?.message ||
-        "Something went wrong",
+        "Failed to fetch copilot status",
     };
   }
 };
 
 /**
- * Get jobs matched by the copilot for manual review
+ * Get matched jobs for copilot
  */
 export const getCopilotMatchedJobs = async (
   copilotId: number
-): Promise<MatchedJobsResponse> => {
+): Promise<{ success: boolean; data?: MatchedJob[]; message?: string }> => {
   try {
     const url = apiUrlPaths.copilot.matchedJobs(copilotId);
     const response = await axiosInstances.get(url);
@@ -226,17 +287,17 @@ export const getCopilotMatchedJobs = async (
         error?.response?.data?.detail ||
         error?.response?.data?.message ||
         error?.message ||
-        "Something went wrong",
+        "Failed to fetch matched jobs",
     };
   }
 };
 
 /**
- * Get all applications submitted by a specific copilot
+ * Get copilot applications
  */
 export const getCopilotApplications = async (
   copilotId: number
-): Promise<CopilotApplicationsResponse> => {
+): Promise<{ success: boolean; data?: CopilotApplication[]; message?: string }> => {
   try {
     const url = apiUrlPaths.copilot.applications(copilotId);
     const response = await axiosInstances.get(url);
@@ -257,17 +318,17 @@ export const getCopilotApplications = async (
         error?.response?.data?.detail ||
         error?.response?.data?.message ||
         error?.message ||
-        "Something went wrong",
+        "Failed to fetch copilot applications",
     };
   }
 };
 
 /**
- * Cancel a running copilot task
+ * Cancel copilot
  */
 export const cancelCopilot = async (
   copilotId: number
-): Promise<CancelCopilotResponse> => {
+): Promise<{ success: boolean; data?: CancelCopilotResult; message?: string }> => {
   try {
     const url = apiUrlPaths.copilot.cancel(copilotId);
     const response = await axiosInstances.delete(url);
@@ -286,7 +347,7 @@ export const cancelCopilot = async (
         error?.response?.data?.detail ||
         error?.response?.data?.message ||
         error?.message ||
-        "Something went wrong",
+        "Failed to cancel copilot",
     };
   }
 };

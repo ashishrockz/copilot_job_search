@@ -72,7 +72,7 @@ export default function Header() {
               <span className="text-lg font-bold text-white">J</span>
             </div>
             <span className="hidden text-xl font-bold tracking-tight text-gray-900 sm:inline-block">
-              Job<span className="text-indigo-600">Portal</span>
+              Job<span className="text-indigo-600">Scout</span>
             </span>
           </div>
 
