@@ -33,73 +33,6 @@ interface CityData {
   };
 }
 
-// Mock city/province data - replace with API data
-const CITY_DATA: CityData = {
-  "United States": {
-    "California": ["Los Angeles", "San Francisco", "San Diego", "San Jose", "Sacramento"],
-    "New York": ["New York City", "Buffalo", "Rochester", "Albany", "Syracuse"],
-    "Texas": ["Houston", "Dallas", "Austin", "San Antonio", "Fort Worth"],
-    "Florida": ["Miami", "Orlando", "Tampa", "Jacksonville", "Fort Lauderdale"],
-    "Illinois": ["Chicago", "Aurora", "Naperville", "Joliet", "Rockford"],
-  },
-  "Canada": {
-    "Ontario": ["Toronto", "Ottawa", "Mississauga", "Brampton", "Hamilton"],
-    "Quebec": ["Montreal", "Quebec City", "Laval", "Gatineau", "Longueuil"],
-    "British Columbia": ["Vancouver", "Surrey", "Burnaby", "Richmond", "Abbotsford"],
-    "Alberta": ["Calgary", "Edmonton", "Red Deer", "Lethbridge", "St. Albert"],
-  },
-  "United Kingdom": {
-    "England": ["London", "Manchester", "Birmingham", "Leeds", "Liverpool"],
-    "Scotland": ["Edinburgh", "Glasgow", "Aberdeen", "Dundee", "Inverness"],
-    "Wales": ["Cardiff", "Swansea", "Newport", "Wrexham", "Barry"],
-    "Northern Ireland": ["Belfast", "Derry", "Lisburn", "Newtownabbey", "Bangor"],
-  },
-  "Germany": {
-    "Bavaria": ["Munich", "Nuremberg", "Augsburg", "Regensburg", "Ingolstadt"],
-    "North Rhine-Westphalia": ["Cologne", "Düsseldorf", "Dortmund", "Essen", "Duisburg"],
-    "Baden-Württemberg": ["Stuttgart", "Mannheim", "Karlsruhe", "Freiburg", "Heidelberg"],
-    "Berlin": ["Berlin"],
-    "Hamburg": ["Hamburg"],
-  },
-  "France": {
-    "Île-de-France": ["Paris", "Versailles", "Boulogne-Billancourt", "Saint-Denis", "Argenteuil"],
-    "Provence-Alpes-Côte d'Azur": ["Marseille", "Nice", "Toulon", "Aix-en-Provence", "Avignon"],
-    "Auvergne-Rhône-Alpes": ["Lyon", "Grenoble", "Saint-Étienne", "Villeurbanne", "Clermont-Ferrand"],
-    "Nouvelle-Aquitaine": ["Bordeaux", "Limoges", "Poitiers", "La Rochelle", "Pau"],
-  },
-  "India": {
-    "Maharashtra": ["Mumbai", "Pune", "Nagpur", "Thane", "Nashik"],
-    "Karnataka": ["Bangalore", "Mysore", "Hubli", "Mangalore", "Belgaum"],
-    "Tamil Nadu": ["Chennai", "Coimbatore", "Madurai", "Tiruchirappalli", "Salem"],
-    "Delhi": ["New Delhi", "Delhi"],
-    "Gujarat": ["Ahmedabad", "Surat", "Vadodara", "Rajkot", "Bhavnagar"],
-  },
-  "Australia": {
-    "New South Wales": ["Sydney", "Newcastle", "Wollongong", "Maitland", "Wagga Wagga"],
-    "Victoria": ["Melbourne", "Geelong", "Ballarat", "Bendigo", "Shepparton"],
-    "Queensland": ["Brisbane", "Gold Coast", "Sunshine Coast", "Townsville", "Cairns"],
-    "Western Australia": ["Perth", "Mandurah", "Bunbury", "Kalgoorlie", "Geraldton"],
-  },
-  "Brazil": {
-    "São Paulo": ["São Paulo", "Campinas", "São Bernardo do Campo", "Santo André", "Osasco"],
-    "Rio de Janeiro": ["Rio de Janeiro", "Niterói", "Duque de Caxias", "Nova Iguaçu", "Petrópolis"],
-    "Minas Gerais": ["Belo Horizonte", "Uberlândia", "Contagem", "Juiz de Fora", "Betim"],
-    "Bahia": ["Salvador", "Feira de Santana", "Vitória da Conquista", "Camaçari", "Ilhéus"],
-  },
-  "Japan": {
-    "Tokyo": ["Tokyo", "Shibuya", "Shinjuku", "Minato", "Chiyoda"],
-    "Osaka": ["Osaka", "Sakai", "Higashiosaka", "Toyonaka", "Suita"],
-    "Kanagawa": ["Yokohama", "Kawasaki", "Sagamihara", "Fujisawa", "Yokosuka"],
-    "Aichi": ["Nagoya", "Toyota", "Okazaki", "Ichinomiya", "Kasugai"],
-  },
-  "Mexico": {
-    "Mexico City": ["Mexico City", "Iztapalapa", "Gustavo A. Madero", "Álvaro Obregón", "Tlalpan"],
-    "Jalisco": ["Guadalajara", "Zapopan", "Tlaquepaque", "Tonalá", "Puerto Vallarta"],
-    "Nuevo León": ["Monterrey", "Guadalupe", "San Nicolás de los Garza", "Apodaca", "Santa Catarina"],
-    "Guanajuato": ["León", "Irapuato", "Celaya", "Salamanca", "Guanajuato"],
-  },
-};
-
 interface OnsiteLocationSelectorModalProps {
   open: boolean;
   onClose: () => void;
@@ -115,15 +48,20 @@ export function OnsiteLocationSelectorModal({
   onSave,
   initialSelections = [],
   title,
-  availableCountries = Object.keys(CITY_DATA),
+  availableCountries = [],
 }: OnsiteLocationSelectorModalProps): React.JSX.Element {
-  const [selectedCountry, setSelectedCountry] = React.useState<string | null>(null);
+  const [selectedCountry, setSelectedCountry] = React.useState<string | null>(
+    null,
+  );
   const [anywhereInCountry, setAnywhereInCountry] = React.useState(false);
-  const [selectedLocations, setSelectedLocations] = React.useState<string[]>(initialSelections);
-  const [expandedProvince, setExpandedProvince] = React.useState<string | null>(null);
-  const [locationData, setLocationData] = React.useState<CityData>(CITY_DATA);
+  const [selectedLocations, setSelectedLocations] =
+    React.useState<string[]>(initialSelections);
+  const [expandedProvince, setExpandedProvince] = React.useState<string | null>(
+    null,
+  );
+  const [locationData, setLocationData] = React.useState<CityData>({});
   const [loading, setLoading] = React.useState(false);
-  const [countries, setCountries] = React.useState<string[]>(Object.keys(CITY_DATA));
+  const [countries, setCountries] = React.useState<string[]>([]);
 
   // Fetch location hierarchy data from API
   React.useEffect(() => {
@@ -145,7 +83,7 @@ export function OnsiteLocationSelectorModal({
               // or we can list them directly as cities
               if (location.states && location.states.length > 0) {
                 transformedData[countryName] = {
-                  "All Locations": location.states.map(state => state.name)
+                  "All Locations": location.states.map((state) => state.name),
                 };
               } else {
                 transformedData[countryName] = {};
@@ -158,7 +96,6 @@ export function OnsiteLocationSelectorModal({
         }
       } catch (error) {
         console.error("Error fetching location hierarchy:", error);
-        // Keep using CITY_DATA as fallback
       } finally {
         setLoading(false);
       }
@@ -173,7 +110,9 @@ export function OnsiteLocationSelectorModal({
     setSelectedLocations(initialSelections);
     // Check if "Anywhere in [Country]" is selected
     const anywherePattern = /^Anywhere in /;
-    const anywhereSelection = initialSelections.find(loc => anywherePattern.test(loc));
+    const anywhereSelection = initialSelections.find((loc) =>
+      anywherePattern.test(loc),
+    );
     if (anywhereSelection) {
       const country = anywhereSelection.replace("Anywhere in ", "");
       setSelectedCountry(country);
@@ -194,7 +133,7 @@ export function OnsiteLocationSelectorModal({
     } else {
       // Clear "Anywhere in [Country]" selection
       setSelectedLocations(
-        selectedLocations.filter(loc => !loc.startsWith("Anywhere in "))
+        selectedLocations.filter((loc) => !loc.startsWith("Anywhere in ")),
       );
     }
   };
@@ -209,7 +148,7 @@ export function OnsiteLocationSelectorModal({
     } else {
       setSelectedLocations((prev) => {
         // Remove any "Anywhere in" entries
-        const filtered = prev.filter(loc => !loc.startsWith("Anywhere in "));
+        const filtered = prev.filter((loc) => !loc.startsWith("Anywhere in "));
         return filtered.includes(locationString)
           ? filtered.filter((c) => c !== locationString)
           : [...filtered, locationString];
@@ -222,22 +161,22 @@ export function OnsiteLocationSelectorModal({
 
     const cities = locationData[selectedCountry][province];
     const provinceLocations = cities.map(
-      city => `${city}, ${province}, ${selectedCountry}`
+      (city) => `${city}, ${province}, ${selectedCountry}`,
     );
 
     const allSelected = provinceLocations.every((loc) =>
-      selectedLocations.includes(loc)
+      selectedLocations.includes(loc),
     );
 
     if (allSelected) {
       // Deselect all in province
       setSelectedLocations((prev) =>
-        prev.filter((loc) => !provinceLocations.includes(loc))
+        prev.filter((loc) => !provinceLocations.includes(loc)),
       );
     } else {
       // Select all in province
       setSelectedLocations((prev) => {
-        const filtered = prev.filter(loc => !loc.startsWith("Anywhere in "));
+        const filtered = prev.filter((loc) => !loc.startsWith("Anywhere in "));
         const newSelections = [...filtered];
         provinceLocations.forEach((loc) => {
           if (!newSelections.includes(loc)) {
@@ -271,12 +210,14 @@ export function OnsiteLocationSelectorModal({
     setSelectedLocations([]);
   };
 
-  const provinces = selectedCountry && locationData[selectedCountry]
-    ? Object.keys(locationData[selectedCountry])
-    : [];
+  const provinces =
+    selectedCountry && locationData[selectedCountry]
+      ? Object.keys(locationData[selectedCountry])
+      : [];
 
   // Use API countries if available, otherwise fall back to availableCountries prop
-  const availableCountryList = countries.length > 0 ? countries : availableCountries;
+  const availableCountryList =
+    countries.length > 0 ? countries : availableCountries;
 
   return (
     <Dialog
@@ -290,11 +231,17 @@ export function OnsiteLocationSelectorModal({
             borderRadius: "12px",
             maxHeight: "85vh",
           },
-        }
+        },
       }}
     >
       <DialogTitle sx={{ pb: 2 }}>
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
           <Typography variant="h6" sx={{ fontWeight: 600, color: "#0f172a" }}>
             {title}
           </Typography>
@@ -306,14 +253,28 @@ export function OnsiteLocationSelectorModal({
 
       <DialogContent sx={{ px: 3, py: 2 }}>
         {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 300 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minHeight: 300,
+            }}
+          >
             <CircularProgress sx={{ color: "#7c3aed" }} />
           </Box>
         ) : (
           <>
             {/* Country Selector */}
             <Box sx={{ mb: 3 }}>
-              <Typography sx={{ mb: 1.5, fontWeight: 500, fontSize: "0.9375rem", color: "#0f172a" }}>
+              <Typography
+                sx={{
+                  mb: 1.5,
+                  fontWeight: 500,
+                  fontSize: "0.9375rem",
+                  color: "#0f172a",
+                }}
+              >
                 Select Country
               </Typography>
               <Autocomplete
@@ -330,11 +291,18 @@ export function OnsiteLocationSelectorModal({
                         ...params.InputProps,
                         startAdornment: (
                           <>
-                            <MagnifyingGlass size={18} style={{ marginLeft: 8, marginRight: 4, color: "#9ca3af" }} />
+                            <MagnifyingGlass
+                              size={18}
+                              style={{
+                                marginLeft: 8,
+                                marginRight: 4,
+                                color: "#9ca3af",
+                              }}
+                            />
                             {params.InputProps.startAdornment}
                           </>
                         ),
-                      }
+                      },
                     }}
                     sx={{
                       "& .MuiOutlinedInput-root": {
@@ -351,38 +319,97 @@ export function OnsiteLocationSelectorModal({
 
             {selectedCountry ? (
               <>
-                {/* Anywhere in Country Option */}
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={anywhereInCountry}
-                      onChange={handleAnywhereToggle}
-                      sx={{
-                        color: "#7c3aed",
-                        "&.Mui-checked": { color: "#7c3aed" },
-                      }}
-                    />
-                  }
-                  label={
-                    <Typography sx={{ fontWeight: 500, fontSize: "0.9375rem" }}>
-                      Anywhere in {selectedCountry}
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 2,
+                    flexWrap: "wrap", // makes it responsive
+                  }}
+                >
+                  {/* Anywhere in Country Option */}
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={anywhereInCountry}
+                        onChange={handleAnywhereToggle}
+                        sx={{
+                          color: "#7c3aed",
+                          "&.Mui-checked": { color: "#7c3aed" },
+                        }}
+                      />
+                    }
+                    label={
+                      <Typography
+                        sx={{ fontWeight: 500, fontSize: "0.9375rem" }}
+                      >
+                        Anywhere in {selectedCountry}
+                      </Typography>
+                    }
+                  />
+
+                  {/* Selected Count */}
+                  <Box
+                    sx={{
+                      p: 2,
+                      backgroundColor: "#f8f9fa",
+                      borderRadius: "8px",
+                      minWidth: 220,
+                    }}
+                  >
+                    <Typography sx={{ fontSize: "0.875rem", color: "#475569" }}>
+                      <strong>{selectedLocations.length}</strong> location
+                      {selectedLocations.length !== 1 ? "s" : ""} selected
+                      {selectedLocations.length > 0 && (
+                        <span style={{ marginLeft: 8 }}>
+                          (
+                          {selectedLocations
+                            .slice(0, 2)
+                            .map((loc) =>
+                              loc.startsWith("Anywhere in ")
+                                ? loc
+                                : loc.split(", ")[0],
+                            )
+                            .join(", ")}
+                          {selectedLocations.length > 2 &&
+                            ` +${selectedLocations.length - 2} more`}
+                          )
+                        </span>
+                      )}
                     </Typography>
-                  }
-                />
+                  </Box>
+                </Box>
 
                 <Box sx={{ display: "flex", alignItems: "center", my: 2 }}>
                   <Divider sx={{ flex: 1 }} />
-                  <Typography sx={{ px: 2, color: "#64748b", fontSize: "0.875rem" }}>
+                  <Typography
+                    sx={{ px: 2, color: "#64748b", fontSize: "0.875rem" }}
+                  >
                     OR
                   </Typography>
                   <Divider sx={{ flex: 1 }} />
                 </Box>
 
-                <Typography sx={{ mb: 2, fontWeight: 500, fontSize: "0.9375rem", color: "#0f172a" }}>
+                <Typography
+                  sx={{
+                    mb: 2,
+                    fontWeight: 500,
+                    fontSize: "0.9375rem",
+                    color: "#0f172a",
+                  }}
+                >
                   Select Cities
                 </Typography>
 
-                <Box sx={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 2, minHeight: 350 }}>
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 2fr",
+                    gap: 2,
+                    minHeight: 350,
+                  }}
+                >
                   {/* Left Panel - Provinces/States */}
                   <Box
                     sx={{
@@ -414,15 +441,21 @@ export function OnsiteLocationSelectorModal({
                                   primary: {
                                     sx: {
                                       fontSize: "0.875rem",
-                                      fontWeight: expandedProvince === province ? 600 : 500,
-                                    }
-                                  }
+                                      fontWeight:
+                                        expandedProvince === province
+                                          ? 600
+                                          : 500,
+                                    },
+                                  },
                                 }}
                               />
                               <CaretRight
                                 size={16}
                                 style={{
-                                  transform: expandedProvince === province ? "rotate(90deg)" : "rotate(0deg)",
+                                  transform:
+                                    expandedProvince === province
+                                      ? "rotate(90deg)"
+                                      : "rotate(0deg)",
                                   transition: "transform 0.2s",
                                 }}
                               />
@@ -445,13 +478,28 @@ export function OnsiteLocationSelectorModal({
                   >
                     {expandedProvince ? (
                       <>
-                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                          <Typography sx={{ fontWeight: 600, fontSize: "0.875rem", color: "#0f172a" }}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            mb: 2,
+                          }}
+                        >
+                          <Typography
+                            sx={{
+                              fontWeight: 600,
+                              fontSize: "0.875rem",
+                              color: "#0f172a",
+                            }}
+                          >
                             {expandedProvince}
                           </Typography>
                           <Button
                             size="small"
-                            onClick={() => handleSelectAllInProvince(expandedProvince)}
+                            onClick={() =>
+                              handleSelectAllInProvince(expandedProvince)
+                            }
                             sx={{
                               textTransform: "none",
                               fontSize: "0.8125rem",
@@ -459,7 +507,9 @@ export function OnsiteLocationSelectorModal({
                               "&:hover": { backgroundColor: "#ede9fe" },
                             }}
                           >
-                            {locationData[selectedCountry][expandedProvince].every((city) => {
+                            {locationData[selectedCountry][
+                              expandedProvince
+                            ].every((city) => {
                               const locationString = `${city}, ${expandedProvince}, ${selectedCountry}`;
                               return selectedLocations.includes(locationString);
                             })
@@ -468,32 +518,44 @@ export function OnsiteLocationSelectorModal({
                           </Button>
                         </Box>
 
-                        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-                          {locationData[selectedCountry][expandedProvince].map((city) => {
-                            const locationString = `${city}, ${expandedProvince}, ${selectedCountry}`;
-                            return (
-                              <FormControlLabel
-                                key={city}
-                                control={
-                                  <Checkbox
-                                    checked={selectedLocations.includes(locationString)}
-                                    onChange={() => handleCityToggle(city, expandedProvince)}
-                                    size="small"
-                                    sx={{
-                                      color: "#cbd5e1",
-                                      "&.Mui-checked": { color: "#7c3aed" },
-                                    }}
-                                  />
-                                }
-                                label={
-                                  <Typography sx={{ fontSize: "0.875rem" }}>
-                                    {city}
-                                  </Typography>
-                                }
-                                sx={{ m: 0 }}
-                              />
-                            );
-                          })}
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 0.5,
+                          }}
+                        >
+                          {locationData[selectedCountry][expandedProvince].map(
+                            (city) => {
+                              const locationString = `${city}, ${expandedProvince}, ${selectedCountry}`;
+                              return (
+                                <FormControlLabel
+                                  key={city}
+                                  control={
+                                    <Checkbox
+                                      checked={selectedLocations.includes(
+                                        locationString,
+                                      )}
+                                      onChange={() =>
+                                        handleCityToggle(city, expandedProvince)
+                                      }
+                                      size="small"
+                                      sx={{
+                                        color: "#cbd5e1",
+                                        "&.Mui-checked": { color: "#7c3aed" },
+                                      }}
+                                    />
+                                  }
+                                  label={
+                                    <Typography sx={{ fontSize: "0.875rem" }}>
+                                      {city}
+                                    </Typography>
+                                  }
+                                  sx={{ m: 0 }}
+                                />
+                              );
+                            },
+                          )}
                         </Box>
                       </>
                     ) : (
@@ -512,22 +574,6 @@ export function OnsiteLocationSelectorModal({
                       </Box>
                     )}
                   </Box>
-                </Box>
-
-                {/* Selected Count */}
-                <Box sx={{ mt: 2, p: 2, backgroundColor: "#f8f9fa", borderRadius: "8px" }}>
-                  <Typography sx={{ fontSize: "0.875rem", color: "#475569" }}>
-                    <strong>{selectedLocations.length}</strong> location
-                    {selectedLocations.length !== 1 ? "s" : ""} selected
-                    {selectedLocations.length > 0 && (
-                      <span style={{ marginLeft: 8 }}>
-                        ({selectedLocations.slice(0, 2).map(loc =>
-                          loc.startsWith("Anywhere in ") ? loc : loc.split(", ")[0]
-                        ).join(", ")}
-                        {selectedLocations.length > 2 && ` +${selectedLocations.length - 2} more`})
-                      </span>
-                    )}
-                  </Typography>
                 </Box>
               </>
             ) : (

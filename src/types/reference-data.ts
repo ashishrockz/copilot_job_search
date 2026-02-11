@@ -16,7 +16,7 @@ export interface JobTitle {
 
 export interface JobTitlesResponse {
   success: boolean;
-  data?: JobTitle[];
+  data?: string[]; // API returns array of job title strings
   message?: string;
 }
 

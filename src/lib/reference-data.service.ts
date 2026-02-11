@@ -19,11 +19,13 @@ export const getJobTitles = async (): Promise<JobTitlesResponse> => {
     const url = apiUrlPaths.jobTitles.list();
     const response = await axiosInstances.get(url);
 
-    const data = Array.isArray(response?.data)
-      ? response.data
-      : Array.isArray(response?.data?.data)
-        ? response.data.data
-        : [];
+    const data = Array.isArray(response?.data?.job_titles)
+      ? response.data.job_titles
+      : Array.isArray(response?.data)
+        ? response.data
+        : Array.isArray(response?.data?.data)
+          ? response.data.data
+          : [];
 
     return { success: true, data };
   } catch (error: any) {
@@ -52,10 +54,10 @@ export const searchJobTitles = async (
       params: { limit: params.limit || 10 },
     });
 
-    const data = Array.isArray(response?.data)
-      ? response.data
-      : Array.isArray(response?.data?.data)
-        ? response.data.data
+    const data = Array.isArray(response?.data.job_titles)
+      ? response.data.job_titles
+      : Array.isArray(response?.data)
+        ? response.data
         : [];
 
     return { success: true, data };

@@ -38,6 +38,7 @@ import { createCopilot } from "@/lib/copilot.service";
 import {
   getCountries,
   getJobTitles,
+  searchJobTitles,
   getTimezones,
   getLanguages,
 } from "@/lib/reference-data.service";
@@ -150,6 +151,7 @@ export function Page(): React.JSX.Element {
   const [timezones, setTimezones] = React.useState<string[]>([]);
   const [languages, setLanguages] = React.useState<string[]>([]);
   const [jobTitleOptions, setJobTitleOptions] = React.useState<string[]>([]);
+  const [jobTitleInputValue, setJobTitleInputValue] = React.useState("");
   const [loadingData, setLoadingData] = React.useState({
     countries: false,
     timezones: false,
@@ -253,11 +255,13 @@ export function Page(): React.JSX.Element {
         setLoadingData(prev => ({ ...prev, languages: false }));
       }
 
+      // Load initial job titles
       try {
         setLoadingData(prev => ({ ...prev, jobTitles: true }));
         const jobTitlesRes = await getJobTitles();
         if (jobTitlesRes.success && jobTitlesRes.data) {
-          setJobTitleOptions(jobTitlesRes.data.map(jt => jt.title));
+          // Data is already an array of strings, no need to map to .title
+          setJobTitleOptions(jobTitlesRes.data);
         }
       } catch (error) {
         console.error("Error loading job titles:", error);
@@ -268,6 +272,30 @@ export function Page(): React.JSX.Element {
 
     loadData();
   }, []);
+
+  // Search job titles as user types (debounced)
+  React.useEffect(() => {
+    if (!jobTitleInputValue || jobTitleInputValue.length < 2) {
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        setLoadingData(prev => ({ ...prev, jobTitles: true }));
+        const searchRes = await searchJobTitles({ query: jobTitleInputValue, limit: 20 });
+        if (searchRes.success && searchRes.data) {
+          // Data is already an array of strings, no need to map to .title
+          setJobTitleOptions(searchRes.data);
+        }
+      } catch (error) {
+        console.error("Error searching job titles:", error);
+      } finally {
+        setLoadingData(prev => ({ ...prev, jobTitles: false }));
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [jobTitleInputValue]);
 
   const handleLocationModalSave = (locations: string[]) => {
     if (locationModalOpen === "remote") {
@@ -666,17 +694,23 @@ export function Page(): React.JSX.Element {
                             freeSolo
                             options={jobTitleOptions}
                             value={value || []}
+                            inputValue={jobTitleInputValue}
+                            onInputChange={(_, newInputValue) => {
+                              setJobTitleInputValue(newInputValue);
+                            }}
                             onChange={(_, newValue) => {
                               if (newValue.length <= 5) onChange(newValue);
                             }}
                             loading={loadingData.jobTitles}
                             size="small"
-                            filterOptions={(options, params) => {
-                              const filtered = options.filter((option) =>
-                                option.toLowerCase().includes(params.inputValue.toLowerCase())
-                              );
-                              return filtered;
-                            }}
+                            filterOptions={(options) => options}
+                            noOptionsText={
+                              jobTitleInputValue.length < 2
+                                ? "Type at least 2 characters to search"
+                                : loadingData.jobTitles
+                                ? "Searching..."
+                                : "No job titles found"
+                            }
                             renderInput={(params) => (
                               <TextField
                                 {...params}

@@ -22,7 +22,7 @@ export const apiUrlPaths = {
   },
   jobTitles: {
     list: (): string => `/job-titles`,
-    search: (query: string): string => `/job-titles/search?q=${encodeURIComponent(query)}`,
+    search: (query: string): string => `/job-titles/search?query=${encodeURIComponent(query)}`,
   },
   location: {
     countries: (): string => `/location/countries`,
