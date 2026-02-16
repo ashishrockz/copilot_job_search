@@ -55,10 +55,10 @@ const getStatusInfo = (status: Copilot["status"]) => {
 // Individual Copilot Card Component
 interface CopilotCardProps {
   copilot: Copilot;
-  onToggle: (id: number) => void;
+  onToggle: (id: string) => void;
   onEdit: (copilot: Copilot) => void;
-  onDelete: (id: number) => void;
-  onTrigger: (id: number) => void;
+  onDelete: (id: string) => void;
+  onTrigger: (id: string) => void;
   index: number;
   isUpdating: boolean;
   isDeleting: boolean;
@@ -110,6 +110,9 @@ function CopilotCard({
             <Target weight="duotone" size={20} />
           </div>
         </div>
+        <p className="text-white/90 text-sm mt-1 line-clamp-2 text-shadow-sm">
+          {displayValue(copilot?.config?.jobTitles?.join(", ")  )}
+        </p>
       </div>
 
       <div className="flex-1 p-6 space-y-4">
@@ -345,7 +348,7 @@ export function Page(): React.JSX.Element {
 
   const navigate = useNavigate();
 
-  const handleToggle = async (id: number) => {
+  const handleToggle = async (id: string) => {
     const copilot = copilots.find((c) => c.id === id);
     if (!copilot) return;
 
@@ -375,7 +378,7 @@ export function Page(): React.JSX.Element {
     navigate(`/copilot/edit/${copilot.id}`);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     const success = await remove(id);
 
     if (success) {
@@ -394,7 +397,7 @@ export function Page(): React.JSX.Element {
     }
   };
 
-  const handleTrigger = async (id: number) => {
+  const handleTrigger = async (id: string) => {
     setSnackbar({
       open: true,
       message: "Triggering copilot...",

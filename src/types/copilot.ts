@@ -3,7 +3,7 @@
 // ==========================================
 
 export interface CopilotApiResponse {
-  id: number;
+  id: string;
   name: string;
   email: string;
   platform: string;
@@ -99,7 +99,7 @@ export interface CancelCopilotApiResponse {
 // ==========================================
 
 export interface Copilot {
-  id: number;
+  id: string;
   name: string;
   email: string;
   platform: string;

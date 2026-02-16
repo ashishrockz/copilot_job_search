@@ -15,6 +15,7 @@ import {
   CopilotApplication,
   TriggerCopilotResult,
   CancelCopilotResult,
+  UpdateCopilotRequest,
 } from "@/types/copilot";
 import { apiUrlPaths } from "./api.paths";
 import { axiosInstances } from "./networkInstance";
@@ -90,7 +91,9 @@ export const getCopilots = async (): Promise<{
       ? response.data.map((item: any) => copilotAdapter.adapt(item))
       : Array.isArray(response?.data?.data)
         ? response.data.data.map((item: any) => copilotAdapter.adapt(item))
-        : [];
+        : Array.isArray(response?.data?.copilots)
+          ? response.data.copilots.map((item: any) => copilotAdapter.adapt(item))
+          : [];
 
     return { success: true, data };
   } catch (error: any) {
@@ -111,7 +114,7 @@ export const getCopilots = async (): Promise<{
  * Get copilot by ID
  */
 export const getCopilotById = async (
-  copilotId: number
+  copilotId: string
 ): Promise<{ success: boolean; data?: Copilot; message?: string }> => {
   try {
     const url = apiUrlPaths.copilot.getById(copilotId);
@@ -138,21 +141,29 @@ export const getCopilotById = async (
  * Update copilot
  */
 export const updateCopilot = async (
-  copilotId: number,
-  formData: CopilotFormData
+  copilotId: string,
+  formData: CopilotFormData | UpdateCopilotRequest
 ): Promise<{ success: boolean; data?: Copilot; message?: string }> => {
   try {
-    // Validate form data
-    const validationErrors = requestAdapter.validate(formData);
-    if (validationErrors.length > 0) {
-      return {
-        success: false,
-        message: validationErrors.join(", "),
-      };
-    }
+    let apiRequest: any;
 
-    // Transform to API request format
-    const apiRequest = requestAdapter.toApiRequest(formData);
+    // Check if formData is CopilotFormData (needs validation) or UpdateCopilotRequest (direct update)
+    if ('status' in formData && Object.keys(formData).length <= 2) {
+      // Simple update request (like status change)
+      apiRequest = formData;
+    } else {
+      // Validate form data
+      const validationErrors = requestAdapter.validate(formData as CopilotFormData);
+      if (validationErrors.length > 0) {
+        return {
+          success: false,
+          message: validationErrors.join(", "),
+        };
+      }
+
+      // Transform to API request format
+      apiRequest = requestAdapter.toApiRequest(formData as CopilotFormData);
+    }
 
     // Make API call
     const url = apiUrlPaths.copilot.update(copilotId);
@@ -183,7 +194,7 @@ export const updateCopilot = async (
  * Delete copilot
  */
 export const deleteCopilot = async (
-  copilotId: number
+  copilotId: string
 ): Promise<{ success: boolean; message?: string }> => {
   try {
     const url = apiUrlPaths.copilot.delete(copilotId);
@@ -208,7 +219,7 @@ export const deleteCopilot = async (
  * Trigger copilot to run
  */
 export const triggerCopilot = async (
-  copilotId: number
+  copilotId: string
 ): Promise<{ success: boolean; data?: TriggerCopilotResult; message?: string }> => {
   try {
     const url = apiUrlPaths.copilot.trigger(copilotId);
@@ -237,7 +248,7 @@ export const triggerCopilot = async (
  * Get copilot status
  */
 export const getCopilotStatus = async (
-  copilotId: number
+  copilotId: string
 ): Promise<{ success: boolean; data?: CopilotStatus; message?: string }> => {
   try {
     const url = apiUrlPaths.copilot.status(copilotId);
@@ -266,7 +277,7 @@ export const getCopilotStatus = async (
  * Get matched jobs for copilot
  */
 export const getCopilotMatchedJobs = async (
-  copilotId: number
+  copilotId: string
 ): Promise<{ success: boolean; data?: MatchedJob[]; message?: string }> => {
   try {
     const url = apiUrlPaths.copilot.matchedJobs(copilotId);
@@ -296,7 +307,7 @@ export const getCopilotMatchedJobs = async (
  * Get copilot applications
  */
 export const getCopilotApplications = async (
-  copilotId: number
+  copilotId: string
 ): Promise<{ success: boolean; data?: CopilotApplication[]; message?: string }> => {
   try {
     const url = apiUrlPaths.copilot.applications(copilotId);
@@ -327,7 +338,7 @@ export const getCopilotApplications = async (
  * Cancel copilot
  */
 export const cancelCopilot = async (
-  copilotId: number
+  copilotId: string
 ): Promise<{ success: boolean; data?: CancelCopilotResult; message?: string }> => {
   try {
     const url = apiUrlPaths.copilot.cancel(copilotId);

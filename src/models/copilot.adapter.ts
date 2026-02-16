@@ -22,14 +22,26 @@ export class CopilotConfigAdapter implements Adapter<CopilotConfig> {
     try {
       config.jobTitles = Array.isArray(data?.job_titles) ? data.job_titles : [];
       config.locations = Array.isArray(data?.locations) ? data.locations : [];
-      config.remoteOnly = data?.remote_only ?? false;
-      config.salaryMin = data?.salary_min ?? null;
-      config.salaryMax = data?.salary_max ?? null;
+
+      // Handle both remote_only and remote_work_type
+      config.remoteOnly = data?.remote_only ?? (data?.remote_work_type === "fully_remote") ?? false;
+
+      // Handle both salary_min/max and min_salary/max_salary
+      config.salaryMin = data?.salary_min ?? data?.min_salary ?? null;
+      config.salaryMax = data?.salary_max ?? data?.max_salary ?? null;
+
+      // Handle both experience_level and seniority
       config.experienceLevel = Array.isArray(data?.experience_level)
         ? data.experience_level
-        : [];
-      config.autoApply = data?.auto_apply ?? false;
-      config.dailyLimit = data?.daily_limit ?? 0;
+        : Array.isArray(data?.seniority)
+          ? data.seniority
+          : [];
+
+      // Handle both auto_apply and auto_apply_mode
+      config.autoApply = data?.auto_apply ?? (data?.auto_apply_mode === "auto_apply") ?? false;
+
+      // Handle both daily_limit and max_applications_per_day
+      config.dailyLimit = data?.daily_limit ?? data?.max_applications_per_day ?? 0;
     } catch (error) {
       console.error("[CopilotConfigAdapter] Adaptation failed:", error);
     }
@@ -51,8 +63,17 @@ export class CopilotAdapter implements Adapter<Copilot> {
       copilot.id = data?.id;
       copilot.name = data?.name;
       copilot.email = data?.email;
-      copilot.platform = data?.platform;
-      copilot.status = data?.status;
+      copilot.platform = data?.platform ?? "linkedin";
+
+      // Derive status from is_active and last_run_status
+      if (data?.last_run_status === "running") {
+        copilot.status = "running";
+      } else if (data?.is_active) {
+        copilot.status = "active";
+      } else {
+        copilot.status = "paused";
+      }
+
       copilot.createdAt = data?.created_at
         ? new Date(data.created_at)
         : new Date();
@@ -62,7 +83,9 @@ export class CopilotAdapter implements Adapter<Copilot> {
       copilot.lastRunAt = data?.last_run_at
         ? new Date(data.last_run_at)
         : null;
-      copilot.config = this.configAdapter.adapt(data?.config);
+
+      // Pass the root-level data to configAdapter (handles both nested config and flat structure)
+      copilot.config = this.configAdapter.adapt(data?.config || data);
     } catch (error) {
       console.error("[CopilotAdapter] Adaptation failed:", error);
     }

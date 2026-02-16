@@ -21,19 +21,19 @@ interface MutationState<T> {
 interface UseCopilotMutationsResult {
   // Update copilot
   updateState: MutationState<Copilot>;
-  update: (copilotId: number, data: UpdateCopilotRequest) => Promise<boolean>;
+  update: (copilotId: string, data: UpdateCopilotRequest) => Promise<boolean>;
 
   // Delete copilot
   deleteState: MutationState<null>;
-  remove: (copilotId: number) => Promise<boolean>;
+  remove: (copilotId: string) => Promise<boolean>;
 
   // Trigger copilot
   triggerState: MutationState<TriggerCopilotResult>;
-  trigger: (copilotId: number) => Promise<boolean>;
+  trigger: (copilotId: string) => Promise<boolean>;
 
   // Cancel copilot
   cancelState: MutationState<CancelCopilotResult>;
-  cancel: (copilotId: number) => Promise<boolean>;
+  cancel: (copilotId: string) => Promise<boolean>;
 }
 
 export const useCopilotMutations = (): UseCopilotMutationsResult => {
@@ -73,7 +73,7 @@ export const useCopilotMutations = (): UseCopilotMutationsResult => {
    * Update a copilot
    */
   const update = useCallback(
-    async (copilotId: number, data: UpdateCopilotRequest): Promise<boolean> => {
+    async (copilotId: string, data: UpdateCopilotRequest): Promise<boolean> => {
       setUpdateState({ loading: true, error: null, data: null });
 
       const response = await updateCopilot(copilotId, data);
@@ -100,7 +100,7 @@ export const useCopilotMutations = (): UseCopilotMutationsResult => {
   /**
    * Delete a copilot
    */
-  const remove = useCallback(async (copilotId: number): Promise<boolean> => {
+  const remove = useCallback(async (copilotId: string): Promise<boolean> => {
     setDeleteState({ loading: true, error: null, data: null });
 
     const response = await deleteCopilot(copilotId);
@@ -121,7 +121,7 @@ export const useCopilotMutations = (): UseCopilotMutationsResult => {
   /**
    * Trigger a copilot to run
    */
-  const trigger = useCallback(async (copilotId: number): Promise<boolean> => {
+  const trigger = useCallback(async (copilotId: string): Promise<boolean> => {
     setTriggerState({ loading: true, error: null, data: null });
 
     const response = await triggerCopilot(copilotId);
@@ -146,7 +146,7 @@ export const useCopilotMutations = (): UseCopilotMutationsResult => {
   /**
    * Cancel a running copilot
    */
-  const cancel = useCallback(async (copilotId: number): Promise<boolean> => {
+  const cancel = useCallback(async (copilotId: string): Promise<boolean> => {
     setCancelState({ loading: true, error: null, data: null });
 
     const response = await cancelCopilot(copilotId);
