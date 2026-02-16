@@ -108,6 +108,8 @@ export interface Copilot {
   updatedAt: Date;
   lastRunAt: Date | null;
   config: CopilotConfig;
+  is_active: boolean;
+  last_run_status: string | null;
 }
 
 export interface CopilotConfig {

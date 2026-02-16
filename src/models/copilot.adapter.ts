@@ -24,7 +24,7 @@ export class CopilotConfigAdapter implements Adapter<CopilotConfig> {
       config.locations = Array.isArray(data?.locations) ? data.locations : [];
 
       // Handle both remote_only and remote_work_type
-      config.remoteOnly = data?.remote_only ?? (data?.remote_work_type === "fully_remote") ?? false;
+      config.remoteOnly = data?.remote_only ?? (data?.remote_work_type === "fully_remote");
 
       // Handle both salary_min/max and min_salary/max_salary
       config.salaryMin = data?.salary_min ?? data?.min_salary ?? null;
@@ -38,7 +38,7 @@ export class CopilotConfigAdapter implements Adapter<CopilotConfig> {
           : [];
 
       // Handle both auto_apply and auto_apply_mode
-      config.autoApply = data?.auto_apply ?? (data?.auto_apply_mode === "auto_apply") ?? false;
+      config.autoApply = data?.auto_apply ?? (data?.auto_apply_mode === "auto_apply");
 
       // Handle both daily_limit and max_applications_per_day
       config.dailyLimit = data?.daily_limit ?? data?.max_applications_per_day ?? 0;
@@ -64,15 +64,17 @@ export class CopilotAdapter implements Adapter<Copilot> {
       copilot.name = data?.name;
       copilot.email = data?.email;
       copilot.platform = data?.platform ?? "linkedin";
-
+      copilot.last_run_status = data?.last_run_status; // Store last_run_status for status derivation
+      copilot.is_active = data?.is_active ?? false;
+      copilot.status = data?.status ?? "paused"; // Default status
       // Derive status from is_active and last_run_status
-      if (data?.last_run_status === "running") {
-        copilot.status = "running";
-      } else if (data?.is_active) {
-        copilot.status = "active";
-      } else {
-        copilot.status = "paused";
-      }
+      // if (data?.last_run_status === "running") {
+      //   copilot.status = "running";
+      // } else if (data?.is_active) {
+      //   copilot.status = "active";
+      // } else {
+      //   copilot.status = "paused";
+      // }
 
       copilot.createdAt = data?.created_at
         ? new Date(data.created_at)
