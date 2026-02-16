@@ -1,12 +1,9 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
-import { useTheme, useMediaQuery, Autocomplete, Chip } from "@mui/material";
 import {
   UserCircleIcon as User,
   EyeIcon as Eye,
   EyeSlashIcon as EyeSlash,
-  BriefcaseIcon as Briefcase,
-  MapPinIcon as MapPin,
   SparkleIcon as Sparkle,
   CheckIcon as Check,
   EnvelopeIcon as Envelope,
@@ -19,12 +16,31 @@ import { signUpUser } from "@/lib/auth.service";
 
 // Zod validation schema
 const schema = zod.object({
-  email: zod.string().min(1, { message: "Email is required" }).email(),
-  first_name: zod.string().min(1, { message: "First name is required" }),
-  last_name: zod.string().min(1, { message: "Last name is required" }),
+  email: zod
+    .string()
+    .trim()
+    .min(1, { message: "Email is required" })
+    .email({ message: "Enter a valid email address" }),
+  first_name: zod
+    .string()
+    .trim()
+    .min(1, { message: "First name is required" })
+    .max(50, { message: "First name must not exceed 50 characters" }),
+  last_name: zod
+    .string()
+    .trim()
+    .min(1, { message: "Last name is required" })
+    .max(50, { message: "Last name must not exceed 50 characters" }),
   password: zod
     .string()
-    .min(8, { message: "Password must be at least 8 characters" }),
+    .min(8, { message: "Password must be at least 8 characters" })
+    .max(64, { message: "Password must not exceed 64 characters" })
+    .regex(/[A-Z]/, { message: "Password must include at least one uppercase letter" })
+    .regex(/[a-z]/, { message: "Password must include at least one lowercase letter" })
+    .regex(/[0-9]/, { message: "Password must include at least one number" })
+    .regex(/[^A-Za-z0-9]/, {
+      message: "Password must include at least one special character",
+    }),
   // job_titles: zod
   //   .array(zod.string())
   //   .min(1, { message: "At least one job title is required" }),
@@ -44,22 +60,8 @@ const defaultValues = {
   // work_location: [],
 } satisfies Values;
 
-// Sample options
-const jobTitleOptions = [
-  "Software Engineer", "Frontend Developer", "Backend Developer", "Full Stack Developer",
-  "DevOps Engineer", "Data Scientist", "Product Manager", "UI/UX Designer",
-  "QA Engineer", "Mobile Developer",
-];
-
-const locationOptions = [
-  "Remote", "Hybrid", "New York, NY", "San Francisco, CA", "Austin, TX",
-  "Seattle, WA", "Boston, MA", "Chicago, IL", "Los Angeles, CA", "Denver, CO",
-];
-
 export function Page(): React.JSX.Element {
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isPending, setIsPending] = useState<boolean>(false);
@@ -68,8 +70,12 @@ export function Page(): React.JSX.Element {
     control,
     handleSubmit,
     setError,
-    formState: { errors },
-  } = useForm<Values>({ defaultValues, resolver: zodResolver(schema) });
+    formState: { errors, isValid },
+  } = useForm<Values>({
+    defaultValues,
+    mode: "onChange",
+    resolver: zodResolver(schema),
+  });
 
   const onSubmit = async (values: Values) => {
     setIsPending(true);
@@ -251,7 +257,21 @@ export function Page(): React.JSX.Element {
                 control={control}
                 render={({ field }) => (
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-medium text-gray-700">Password</label>
+                    <div className="flex items-center gap-2">
+                      <label className="block text-sm font-medium text-gray-700">Password</label>
+                      <div className="relative group">
+                        <button
+                          type="button"
+                          aria-label="Password requirements"
+                          className="w-4 h-4 rounded-full border border-gray-300 text-[10px] leading-none text-gray-500 flex items-center justify-center hover:border-indigo-400 hover:text-indigo-500 transition-colors"
+                        >
+                          i
+                        </button>
+                        <div className="pointer-events-none absolute z-20 left-1/2 -translate-x-1/2 top-6 w-72 rounded-lg border border-gray-200 bg-white p-3 text-xs text-gray-600 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                          Use 8-64 characters with at least one uppercase letter, one lowercase letter, one number, and one special character.
+                        </div>
+                      </div>
+                    </div>
                     <div className="relative">
                       <input
                         {...field}
@@ -372,7 +392,7 @@ export function Page(): React.JSX.Element {
 
               <button
                 type="submit"
-                disabled={isPending}
+                disabled={isPending || !isValid}
                 className="w-full py-3.5 rounded-xl bg-indigo-600 text-white font-semibold shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:shadow-indigo-300 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed disabled:shadow-none"
               >
                 {isPending ? "Creating Account..." : "Create Account"}

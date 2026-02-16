@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React from "react";
+import { Navigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
 export interface GuestGuardProps {
@@ -11,15 +11,7 @@ export interface GuestGuardProps {
  * Used for login/signup pages to prevent logged-in users from accessing them
  */
 export function GuestGuard({ children }: GuestGuardProps): React.JSX.Element {
-    const navigate = useNavigate();
     const { isAuthenticated, loading } = useAuth();
-
-    useEffect(() => {
-        // Redirect authenticated users to the main app
-        if (!loading && isAuthenticated) {
-            navigate("/copilot", { replace: true });
-        }
-    }, [loading, isAuthenticated, navigate]);
 
     // Show loading state
     if (loading) {
@@ -30,9 +22,8 @@ export function GuestGuard({ children }: GuestGuardProps): React.JSX.Element {
         );
     }
 
-    // Don't render auth pages if user is authenticated (will redirect)
     if (isAuthenticated) {
-        return <></>;
+        return <Navigate to="/copilot" replace />;
     }
 
     return <>{children}</>;

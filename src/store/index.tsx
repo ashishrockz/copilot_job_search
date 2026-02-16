@@ -7,11 +7,16 @@ import { applicationRoute } from "@/routes/application";
 import { toolsRoute } from "@/routes/tools";
 import { careerRoute } from "@/routes/careet";
 import { supportRoute } from "@/routes/support";
+import { GuestGuard } from "@/components/auth/GuestGuard";
 
 export const routes: RouteObject[] = [
   {
     path: "/",
-    element: <Home />,
+    element: (
+      <GuestGuard>
+        <Home />
+      </GuestGuard>
+    ),
   },
   authRoute,
   applicationRoute,

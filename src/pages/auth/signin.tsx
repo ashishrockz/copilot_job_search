@@ -1,6 +1,5 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
-import { useTheme, useMediaQuery } from "@mui/material";
 import {
   EyeIcon as Eye,
   EyeSlashIcon as EyeSlash,
@@ -19,12 +18,13 @@ import { useAuth } from "@/context/AuthContext";
 const schema = zod.object({
   email: zod
     .string()
+    .trim()
     .min(1, { message: "Email is required" })
     .email({ message: "Enter a valid email address" }),
 
   password: zod
     .string()
-    .min(8, { message: "Password must be at least 8 characters" })
+    .min(1, { message: "Password is required" })
     .max(64, { message: "Password must not exceed 64 characters" }),
 });
 
@@ -34,8 +34,6 @@ const defaultValues = { email: "", password: "" } satisfies Values;
 // -------------------- Page --------------------
 export function Page(): React.JSX.Element {
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const { login, isAuthenticated, loading } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
@@ -159,6 +157,7 @@ export function Page(): React.JSX.Element {
                       />
                       <Envelope size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     </div>
+                    {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email.message}</p>}
                   </div>
                 )}
               />
@@ -187,6 +186,7 @@ export function Page(): React.JSX.Element {
                         {showPassword ? <EyeSlash size={18} /> : <Eye size={18} />}
                       </button>
                     </div>
+                    {errors.password && <p className="mt-1 text-sm text-red-500">{errors.password.message}</p>}
                   </div>
                 )}
               />
